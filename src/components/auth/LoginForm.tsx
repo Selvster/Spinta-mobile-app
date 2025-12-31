@@ -5,6 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Input, Button } from '../common';
 import { loginSchema, LoginFormData } from '../../utils/validators';
 import { useLogin } from '../../api/mutations/auth.mutations';
+import { useAuthStore } from '../../stores/authStore';
+import { UserRole } from '../../types';
 
 interface LoginFormProps {
   onLoginSuccess?: () => void;
@@ -12,6 +14,7 @@ interface LoginFormProps {
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const loginMutation = useLogin();
+  const { setUser } = useAuthStore();
 
   const {
     control,
@@ -26,15 +29,29 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    try {
-      await loginMutation.mutateAsync(data);
-      onLoginSuccess?.();
-    } catch (error: any) {
-      Alert.alert(
-        'Login Failed',
-        error.response?.data?.message || 'Invalid credentials'
-      );
-    }
+    // Temporary: Skip API call and login directly as coach
+    setUser({
+      id: '1',
+      email: data.email,
+      firstName: 'Test',
+      lastName: 'Coach',
+      role: UserRole.COACH,
+      teamIds: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    onLoginSuccess?.();
+
+    // Original code (commented out for now):
+    // try {
+    //   await loginMutation.mutateAsync(data);
+    //   onLoginSuccess?.();
+    // } catch (error: any) {
+    //   Alert.alert(
+    //     'Login Failed',
+    //     error.response?.data?.message || 'Invalid credentials'
+    //   );
+    // }
   };
 
   return (
@@ -77,7 +94,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       <Button
         title="Log in"
         onPress={handleSubmit(onSubmit)}
-        loading={loginMutation.isPending}
         fullWidth
       />
     </View>

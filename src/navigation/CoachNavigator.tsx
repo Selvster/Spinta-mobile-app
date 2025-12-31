@@ -1,11 +1,13 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { COACH_ROUTES } from '../constants/routes';
+import { COLORS } from '../constants';
 
-import CoachHomeScreen from '../screens/coach/CoachHomeScreen';
-import CoachTeamScreen from '../screens/coach/CoachTeamScreen';
-import CoachProfileScreen from '../screens/coach/CoachProfileScreen';
-import SettingsScreen from '../screens/shared/SettingsScreen';
+import ClubScreen from '../screens/coach/ClubScreen';
+import PlayersScreen from '../screens/coach/PlayersScreen';
+import ChatbotScreen from '../screens/coach/ChatbotScreen';
+import ProfileScreen from '../screens/coach/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -13,39 +15,60 @@ const CoachNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.textSecondary,
+        tabBarStyle: {
+          backgroundColor: COLORS.background,
+          borderTopColor: COLORS.border,
+        },
+        tabBarLabelStyle: {
+          fontFamily: 'FranklinGothic-Book',
+          fontSize: 13,
+        },
+        tabBarIconStyle: {
+          marginTop: 4,
+        },
       }}
     >
       <Tab.Screen
-        name={COACH_ROUTES.HOME}
-        component={CoachHomeScreen}
+        name={COACH_ROUTES.CLUB}
+        component={ClubScreen}
         options={{
-          title: 'Home',
-          tabBarLabel: 'Home',
+          title: 'Club',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="shield-outline" size={28} color={color} />
+          ),
         }}
       />
       <Tab.Screen
-        name={COACH_ROUTES.TEAM}
-        component={CoachTeamScreen}
+        name={COACH_ROUTES.PLAYERS}
+        component={PlayersScreen}
         options={{
-          title: 'Teams',
-          tabBarLabel: 'Teams',
+          title: 'Players',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="people-outline" size={28} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name={COACH_ROUTES.CHATBOT}
+        component={ChatbotScreen}
+        options={{
+          title: 'Chatbot',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="chatbubbles-outline" size={28} color={color} />
+          ),
         }}
       />
       <Tab.Screen
         name={COACH_ROUTES.PROFILE}
-        component={CoachProfileScreen}
+        component={ProfileScreen}
         options={{
           title: 'Profile',
-          tabBarLabel: 'Profile',
-        }}
-      />
-      <Tab.Screen
-        name={COACH_ROUTES.SETTINGS}
-        component={SettingsScreen}
-        options={{
-          title: 'Settings',
-          tabBarLabel: 'Settings',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="person-outline" size={28} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>

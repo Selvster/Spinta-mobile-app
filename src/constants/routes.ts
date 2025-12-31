@@ -13,8 +13,8 @@ export const PLAYER_ROUTES = {
 } as const;
 
 export const COACH_ROUTES = {
-  HOME: 'CoachHome',
-  TEAM: 'CoachTeam',
-  PROFILE: 'CoachProfile',
-  SETTINGS: 'Settings',
+  CLUB: 'Club',
+  PLAYERS: 'Players',
+  CHATBOT: 'Chatbot',
+  PROFILE: 'Profile',
 } as const;

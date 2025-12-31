@@ -32,13 +32,13 @@ export const Button: React.FC<ButtonProps> = ({
     (disabled || loading) && styles.disabledButton,
     fullWidth && styles.fullWidth,
     style,
-  ];
+  ].filter((style) => style !== false && style != null);
 
   const textStyles = [
     styles.text,
     (variant === 'primary' || variant === 'secondary') && styles.primaryText,
     variant === 'outline' && styles.outlineText,
-  ];
+  ].filter((style) => style !== false && style != null);
 
   return (
     <TouchableOpacity
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'FranklinGothic-Demi',
     letterSpacing: 0.5,
   },
   primaryText: {
@@ -93,6 +93,6 @@ const styles = StyleSheet.create({
   },
   outlineText: {
     color: COLORS.primary,
-    fontWeight: '700',
+    fontFamily: 'FranklinGothic-Heavy',
   },
 });

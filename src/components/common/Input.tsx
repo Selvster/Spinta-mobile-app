@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: 'FranklinGothic-Demi',
     color: COLORS.text,
     marginBottom: 8,
     letterSpacing: 0.3,
@@ -50,6 +50,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
+    fontFamily: 'FranklinGothic-Book',
     color: COLORS.text,
     backgroundColor: COLORS.background,
     minHeight: 48,
@@ -60,8 +61,8 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 12,
+    fontFamily: 'FranklinGothic-Medium',
     color: COLORS.error,
     marginTop: 4,
-    fontWeight: '500',
   },
 });

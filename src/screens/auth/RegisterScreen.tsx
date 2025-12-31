@@ -1,49 +1,102 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Image, TouchableOpacity } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Button } from '../../components/common';
+import { Ionicons } from '@expo/vector-icons';
+import { RoleSelector } from '../../components/auth/RoleSelector';
+import { CoachRegistrationForm } from '../../components/auth/CoachRegistrationForm';
+import { PlayerRegistrationForm } from '../../components/auth/PlayerRegistrationForm';
+import { RegistrationForm } from '../../components/auth/RegistrationForm';
+import { UserRole } from '../../types';
 import { AUTH_ROUTES, COLORS } from '../../constants';
 
 type Props = NativeStackScreenProps<any, typeof AUTH_ROUTES.REGISTER>;
 
-const RegisterScreen: React.FC<Props> = ({ navigation }) => {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Create Account</Text>
-      <Text style={styles.subtitle}>
-        First, select your role to get started
-      </Text>
+type RegistrationStep = 'role' | 'details';
 
-      <Button
-        title="Choose Your Role"
-        onPress={() => navigation.navigate(AUTH_ROUTES.ROLE_SELECTION)}
-        fullWidth
-      />
-    </View>
+const RegisterScreen: React.FC<Props> = ({ navigation }) => {
+  const [selectedRole, setSelectedRole] = useState<UserRole | undefined>();
+  const [currentStep, setCurrentStep] = useState<RegistrationStep>('role');
+
+  const handleContinue = () => {
+    if (selectedRole) {
+      setCurrentStep('details');
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep === 'details') {
+      setCurrentStep('role');
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        </TouchableOpacity>
+
+        {currentStep === 'role' && (
+          <Image
+            source={require('../../../assets/identity/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        )}
+
+        {currentStep === 'role' ? (
+          <RoleSelector
+            onSelectRole={setSelectedRole}
+            onContinue={handleContinue}
+            selectedRole={selectedRole}
+          />
+        ) : selectedRole === UserRole.COACH ? (
+          <CoachRegistrationForm
+            onRegisterSuccess={() => {}}
+          />
+        ) : selectedRole === UserRole.PLAYER ? (
+          <PlayerRegistrationForm
+            onRegisterSuccess={() => {}}
+          />
+        ) : (
+          <RegistrationForm
+            role={selectedRole!}
+            onRegisterSuccess={() => {}}
+          />
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
     backgroundColor: COLORS.background,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 12,
-    letterSpacing: 0.5,
+  backButton: {
+    padding: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 16,
   },
-  subtitle: {
-    fontSize: 17,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: 48,
-    lineHeight: 24,
+  scrollContent: {
+    flexGrow: 1,
+    padding: 24,
+    paddingTop: 40,
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    alignSelf: 'center',
+    marginBottom: 24,
   },
 });
 

@@ -19,6 +19,7 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
           title="Login"
           onPress={() => navigation.navigate(AUTH_ROUTES.LOGIN)}
           fullWidth
+          style={styles.button}
         />
         <Button
           title="Create Account"
@@ -56,7 +57,9 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     width: '100%',
-    gap: 16,
+  },
+  button: {
+    marginBottom: 16,
   },
 });
 

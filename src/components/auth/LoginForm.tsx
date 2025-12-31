@@ -75,7 +75,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       />
 
       <Button
-        title="Login"
+        title="Log in"
         onPress={handleSubmit(onSubmit)}
         loading={loginMutation.isPending}
         fullWidth

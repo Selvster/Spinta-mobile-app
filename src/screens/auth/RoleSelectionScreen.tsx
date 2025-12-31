@@ -40,6 +40,7 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
       </TouchableOpacity>
 
       <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
@@ -66,6 +67,10 @@ const RoleSelectionScreen: React.FC<Props> = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  scrollView: {
     flex: 1,
     backgroundColor: COLORS.background,
   },

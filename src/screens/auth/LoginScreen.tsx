@@ -14,6 +14,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       style={styles.container}
     >
       <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
@@ -41,6 +42,10 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  scrollView: {
     flex: 1,
     backgroundColor: COLORS.background,
   },

@@ -21,10 +21,11 @@ const CoachNavigator = () => {
         tabBarStyle: {
           backgroundColor: COLORS.background,
           borderTopColor: COLORS.border,
+          height: 80,
         },
         tabBarLabelStyle: {
           fontFamily: 'FranklinGothic-Book',
-          fontSize: 13,
+          fontSize: 12,
         },
         tabBarIconStyle: {
           marginTop: 4,
@@ -37,7 +38,7 @@ const CoachNavigator = () => {
         options={{
           title: 'Club',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="shield-outline" size={28} color={color} />
+            <Ionicons name="shield-outline" size={22} color={color} />
           ),
         }}
       />
@@ -47,7 +48,7 @@ const CoachNavigator = () => {
         options={{
           title: 'Players',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="people-outline" size={28} color={color} />
+            <Ionicons name="people-outline" size={22} color={color} />
           ),
         }}
       />
@@ -57,7 +58,7 @@ const CoachNavigator = () => {
         options={{
           title: 'Chatbot',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="chatbubbles-outline" size={28} color={color} />
+            <Ionicons name="chatbubbles-outline" size={22} color={color} />
           ),
         }}
       />
@@ -67,7 +68,7 @@ const CoachNavigator = () => {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="person-outline" size={28} color={color} />
+            <Ionicons name="person-outline" size={22} color={color} />
           ),
         }}
       />

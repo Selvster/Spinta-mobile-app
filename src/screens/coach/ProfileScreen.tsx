@@ -2,8 +2,11 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants';
+import { useAuth } from '../../hooks';
 
 const ProfileScreen: React.FC = () => {
+  const { logout } = useAuth();
+
   // Mock data - replace with real data later
   const profile = {
     name: 'John Smith',
@@ -20,8 +23,7 @@ const ProfileScreen: React.FC = () => {
   };
 
   const handleLogOut = () => {
-    // Handle logout
-    console.log('Logging out...');
+    logout();
   };
 
   return (

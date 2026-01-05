@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../constants';
+import { COACH_ROUTES } from '../../constants/routes';
 
 interface Player {
   id: string;
@@ -12,6 +14,8 @@ interface Player {
 }
 
 const PlayersScreen: React.FC = () => {
+  const navigation = useNavigation();
+
   // Mock data - replace with real data later
   const totalPlayers = 5;
   const joinedPlayers = 3;
@@ -57,7 +61,12 @@ const PlayersScreen: React.FC = () => {
       {/* Players List */}
       <View style={styles.playersList}>
         {players.map((player) => (
-          <TouchableOpacity key={player.id} style={styles.playerCard}>
+          <TouchableOpacity
+            key={player.id}
+            style={styles.playerCard}
+            onPress={() => navigation.navigate(COACH_ROUTES.PLAYER_DETAIL as never)}
+            activeOpacity={0.7}
+          >
             <View style={styles.playerAvatar}>
               {player.status === 'joined' ? (
                 <View style={styles.avatarPlaceholder}>

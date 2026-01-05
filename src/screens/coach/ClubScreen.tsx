@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../constants';
+import { COACH_ROUTES } from '../../constants/routes';
 
 type TabType = 'summary' | 'statistics';
 type MatchResult = 'W' | 'D' | 'L';
@@ -22,6 +24,7 @@ const StatRow: React.FC<{ label: string; value: string }> = ({ label, value }) =
 );
 
 const ClubScreen: React.FC = () => {
+  const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<TabType>('summary');
 
   // Mock data - replace with real data later
@@ -162,7 +165,12 @@ const ClubScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
             {matches.map((match) => (
-              <View key={match.id} style={styles.matchCard}>
+              <TouchableOpacity
+                key={match.id}
+                style={styles.matchCard}
+                onPress={() => navigation.navigate(COACH_ROUTES.MATCH_DETAIL as never)}
+                activeOpacity={0.7}
+              >
                 <View style={styles.matchContent}>
                   <Text style={styles.matchDate}>{match.date}</Text>
                   <View style={styles.matchInfo}>
@@ -176,7 +184,7 @@ const ClubScreen: React.FC = () => {
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         </>

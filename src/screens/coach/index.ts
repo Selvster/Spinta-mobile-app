@@ -5,3 +5,6 @@ export { default as ClubScreen } from './ClubScreen';
 export { default as PlayersScreen } from './PlayersScreen';
 export { default as ChatbotScreen } from './ChatbotScreen';
 export { default as ProfileScreen } from './ProfileScreen';
+export { default as MatchDetailScreen } from './MatchDetailScreen';
+export { default as PlayerDetailScreen } from './PlayerDetailScreen';
+export { default as CreateTrainingPlanScreen } from './CreateTrainingPlanScreen';

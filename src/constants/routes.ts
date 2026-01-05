@@ -17,4 +17,7 @@ export const COACH_ROUTES = {
   PLAYERS: 'Players',
   CHATBOT: 'Chatbot',
   PROFILE: 'Profile',
+  MATCH_DETAIL: 'MatchDetail',
+  PLAYER_DETAIL: 'PlayerDetail',
+  CREATE_TRAINING_PLAN: 'CreateTrainingPlan',
 } as const;

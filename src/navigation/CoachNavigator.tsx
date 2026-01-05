@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { COACH_ROUTES } from '../constants/routes';
 import { COLORS } from '../constants';
@@ -8,10 +9,14 @@ import ClubScreen from '../screens/coach/ClubScreen';
 import PlayersScreen from '../screens/coach/PlayersScreen';
 import ChatbotScreen from '../screens/coach/ChatbotScreen';
 import ProfileScreen from '../screens/coach/ProfileScreen';
+import MatchDetailScreen from '../screens/coach/MatchDetailScreen';
+import PlayerDetailScreen from '../screens/coach/PlayerDetailScreen';
+import CreateTrainingPlanScreen from '../screens/coach/CreateTrainingPlanScreen';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
-const CoachNavigator = () => {
+const CoachTabs = () => {
   return (
     <Tab.Navigator
       screenOptions={{
@@ -73,6 +78,21 @@ const CoachNavigator = () => {
         }}
       />
     </Tab.Navigator>
+  );
+};
+
+const CoachNavigator = () => {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="CoachTabs" component={CoachTabs} />
+      <Stack.Screen name={COACH_ROUTES.MATCH_DETAIL} component={MatchDetailScreen} />
+      <Stack.Screen name={COACH_ROUTES.PLAYER_DETAIL} component={PlayerDetailScreen} />
+      <Stack.Screen name={COACH_ROUTES.CREATE_TRAINING_PLAN} component={CreateTrainingPlanScreen} />
+    </Stack.Navigator>
   );
 };
 

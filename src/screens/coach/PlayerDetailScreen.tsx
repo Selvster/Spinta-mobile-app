@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Modal, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import * as Clipboard from 'expo-clipboard';
 import { COLORS } from '../../constants';
 import { COACH_ROUTES } from '../../constants/routes';
 import { AttributeRadar, Attribute } from '../../components/coach';
@@ -14,8 +14,15 @@ interface PlayerData {
   name: string;
   jerseyNumber: number;
   status: 'Active' | 'Pending Invitation';
-  code: string;
+  code?: string; // Only for pending players
+  height?: string; // e.g., "5'11\""
+  age?: number;
+  position?: string;
 }
+
+type PlayerDetailRouteParams = {
+  player?: PlayerData;
+};
 
 
 interface StatRow {
@@ -40,18 +47,35 @@ interface TrainingPlan {
   status: 'Completed' | 'In Progress' | 'Not Started';
 }
 
+const AI_LOADING_MESSAGES = [
+  'Getting player stats...',
+  'Analyzing player weaknesses...',
+  'Finding optimal training exercises...',
+  'Building personalized plan...',
+];
+
 const PlayerDetailScreen: React.FC = () => {
   const navigation = useNavigation();
+  const route = useRoute<RouteProp<{ params: PlayerDetailRouteParams }, 'params'>>();
   const [activeTab, setActiveTab] = useState<TabType>('summary');
+  const [showAILoading, setShowAILoading] = useState(false);
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
+  const spinValue = useRef(new Animated.Value(0)).current;
 
-  // Mock data - will be replaced with actual data from navigation params
-  const playerData: PlayerData = {
+  // Get player data from navigation params or use default mock data
+  const playerFromParams = route.params?.player;
+
+  const playerData: PlayerData = playerFromParams || {
     id: '1',
-    name: 'Player #23',
-    jerseyNumber: 23,
-    status: 'Pending Invitation',
-    code: 'SP23TH003',
+    name: 'Marcus Silva',
+    jerseyNumber: 10,
+    status: 'Active',
+    height: "5'11\"",
+    age: 23,
+    position: 'Forward',
   };
+
+  const isPendingPlayer = playerData.status === 'Pending Invitation';
 
   const attributeScores: Attribute[] = [
     { label: 'PAC', value: 100, maxValue: 100 },
@@ -67,14 +91,14 @@ const PlayerDetailScreen: React.FC = () => {
     { label: 'Goals', value: 8 },
     { label: 'Assists', value: 5 },
     { label: 'Expected Goals (xG)', value: 6.5 },
-    { label: 'Total Shots', value: 32 },
+    { label: 'Shots per Game', value: 2.7 },
     { label: 'Shots on Target per Game', value: 2.5 },
     { label: 'Total Passes', value: 450 },
     { label: 'Passes Completed', value: 385 },
-    { label: 'Pass Success %', value: '85%' },
-    { label: 'Successful Dribbles', value: 42 },
-    { label: 'Fouls', value: 8 },
+    { label: 'Total Dribbles', value: 42 },
+    { label: 'Successful Dribbles', value: 36 },
     { label: 'Tackles', value: 32 },
+    { label: 'Tackle Success Rate', value: '78%' },
     { label: 'Interceptions', value: 18 },
     { label: 'Interceptions Success %', value: '75%' },
   ];
@@ -142,14 +166,23 @@ const PlayerDetailScreen: React.FC = () => {
     },
   ];
 
-  const handleCopyCode = () => {
-    // Copy code to clipboard
-    console.log('Code copied:', playerData.code);
+  const handleCopyCode = async () => {
+    if (playerData.code) {
+      await Clipboard.setStringAsync(playerData.code);
+      Alert.alert('Copied!', 'Invitation code copied to clipboard');
+    }
   };
 
-  const handleEditDetails = () => {
-    // Navigate to edit screen or open modal
-    console.log('Edit details');
+  const handleShareCode = async () => {
+    if (playerData.code) {
+      try {
+        await Share.share({
+          message: `Join my team on Spinta! Use this invitation code: ${playerData.code}`,
+        });
+      } catch (error) {
+        console.error('Error sharing code:', error);
+      }
+    }
   };
 
   const getResultColor = (result: 'Win' | 'Draw' | 'Loss') => {
@@ -185,9 +218,45 @@ const PlayerDetailScreen: React.FC = () => {
     }
   };
 
+  // Start spinning animation for loading
+  const startSpinAnimation = () => {
+    spinValue.setValue(0);
+    Animated.loop(
+      Animated.timing(spinValue, {
+        toValue: 1,
+        duration: 1000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+  };
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
   const handleCreateTrainingPlan = () => {
-    // Navigate to AI training plan creation
-    navigation.navigate(COACH_ROUTES.CREATE_TRAINING_PLAN as never);
+    setShowAILoading(true);
+    setCurrentMessageIndex(0);
+    startSpinAnimation();
+
+    // Rotate through messages
+    let messageIndex = 0;
+    const messageInterval = setInterval(() => {
+      messageIndex++;
+      if (messageIndex < AI_LOADING_MESSAGES.length) {
+        setCurrentMessageIndex(messageIndex);
+      }
+    }, 1250); // Change message every 1.25 seconds (5 seconds / 4 messages)
+
+    // After 5 seconds, navigate to CreateTrainingPlanScreen
+    setTimeout(() => {
+      clearInterval(messageInterval);
+      setShowAILoading(false);
+      setCurrentMessageIndex(0);
+      navigation.navigate(COACH_ROUTES.CREATE_TRAINING_PLAN as never);
+    }, 5000);
   };
 
   return (
@@ -211,20 +280,19 @@ const PlayerDetailScreen: React.FC = () => {
           {/* Player Name */}
           <Text style={styles.playerName}>{playerData.name}</Text>
 
-          {/* Status Badge */}
-          <View
-            style={[
-              styles.statusBadge,
-              {
-                backgroundColor:
-                  playerData.status === 'Active'
-                    ? COLORS.success
-                    : COLORS.warning,
-              },
-            ]}
-          >
-            <Text style={styles.statusText}>{playerData.status}</Text>
-          </View>
+          {/* For Joined Players: Show Jersey • Height • Age */}
+          {!isPendingPlayer && (
+            <Text style={styles.playerDetails}>
+              #{playerData.jerseyNumber} • {playerData.height} • {playerData.age} years
+            </Text>
+          )}
+
+          {/* Status Badge - Only show for Pending players */}
+          {isPendingPlayer && (
+            <View style={[styles.statusBadge, { backgroundColor: COLORS.warning }]}>
+              <Text style={styles.statusText}>{playerData.status}</Text>
+            </View>
+          )}
         </View>
 
         {/* Tabs */}
@@ -258,22 +326,25 @@ const PlayerDetailScreen: React.FC = () => {
         {/* Tab Content */}
         {activeTab === 'summary' && (
           <View style={styles.tabContent}>
-            {/* Player Stats Code */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Player Stats Code</Text>
-              <View style={styles.codeContainer}>
-                <Text style={styles.codeText}>{playerData.code}</Text>
-                <View style={styles.codeButtons}>
-                  <TouchableOpacity style={styles.copyButton} onPress={handleCopyCode}>
-                    <Ionicons name="copy-outline" size={16} color={COLORS.text} />
-                    <Text style={styles.copyButtonText}>Copy Code</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.editButton} onPress={handleEditDetails}>
-                    <Text style={styles.editButtonText}>Edit Details</Text>
-                  </TouchableOpacity>
+            {/* Player Stats Code - Only for Pending Players */}
+            {isPendingPlayer && playerData.code && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Player Stats Code</Text>
+                <View style={styles.codeContainer}>
+                  <Text style={styles.codeText}>{playerData.code}</Text>
+                  <View style={styles.codeButtons}>
+                    <TouchableOpacity style={styles.copyButton} onPress={handleCopyCode}>
+                      <Ionicons name="copy-outline" size={16} color={COLORS.text} />
+                      <Text style={styles.copyButtonText}>Copy Code</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.shareButton} onPress={handleShareCode}>
+                      <Ionicons name="share-outline" size={16} color={COLORS.textOnPrimary} />
+                      <Text style={styles.shareButtonText}>Share Code</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </View>
+            )}
 
             {/* Attribute Scores */}
             <View style={styles.section}>
@@ -313,7 +384,7 @@ const PlayerDetailScreen: React.FC = () => {
                     styles.matchHistoryCard,
                     { backgroundColor: getResultBackgroundColor(match.result) },
                   ]}
-                  onPress={() => navigation.navigate(COACH_ROUTES.MATCH_DETAIL as never)}
+                  onPress={() => navigation.navigate(COACH_ROUTES.PLAYER_MATCH_DETAIL as never)}
                   activeOpacity={0.7}
                 >
                   <View style={styles.matchHistoryContent}>
@@ -351,19 +422,12 @@ const PlayerDetailScreen: React.FC = () => {
 
             {/* AI Create Button */}
             <TouchableOpacity
-              style={styles.aiButtonContainer}
+              style={styles.aiButton}
               onPress={handleCreateTrainingPlan}
               activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={['#FFB800', '#FF6B00', '#FF3000']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.aiButton}
-              >
-                <Ionicons name="flash" size={20} color={COLORS.textOnPrimary} />
-                <Text style={styles.aiButtonText}>Create Training Plan Using AI</Text>
-              </LinearGradient>
+              <Ionicons name="flash" size={20} color={COLORS.textOnPrimary} />
+              <Text style={styles.aiButtonText}>Create Training Plan Using AI</Text>
             </TouchableOpacity>
 
             {/* Training Plans List */}
@@ -373,6 +437,7 @@ const PlayerDetailScreen: React.FC = () => {
                   key={plan.id}
                   style={styles.trainingPlanCard}
                   activeOpacity={0.7}
+                  onPress={() => navigation.navigate(COACH_ROUTES.TRAINING_PLAN_DETAIL as never, { plan } as never)}
                 >
                   <View style={styles.trainingPlanContent}>
                     <Text style={styles.trainingPlanTitle}>{plan.title}</Text>
@@ -395,6 +460,37 @@ const PlayerDetailScreen: React.FC = () => {
           </View>
         )}
       </ScrollView>
+
+      {/* AI Loading Modal */}
+      <Modal
+        visible={showAILoading}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+      >
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContainer}>
+            <Animated.View style={{ transform: [{ rotate: spin }] }}>
+              <Ionicons name="flash" size={48} color={COLORS.primary} />
+            </Animated.View>
+            <Text style={styles.loadingTitle}>Creating Training Plan</Text>
+            <Text style={styles.loadingMessage}>
+              {AI_LOADING_MESSAGES[currentMessageIndex]}
+            </Text>
+            <View style={styles.loadingProgress}>
+              {AI_LOADING_MESSAGES.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.progressDot,
+                    index <= currentMessageIndex && styles.progressDotActive,
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -449,6 +545,18 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'FranklinGothic-Heavy',
     color: COLORS.text,
+    marginBottom: 8,
+  },
+  playerPosition: {
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Demi',
+    color: COLORS.primary,
+    marginBottom: 4,
+  },
+  playerDetails: {
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.textSecondary,
     marginBottom: 8,
   },
   statusBadge: {
@@ -532,15 +640,17 @@ const styles = StyleSheet.create({
     fontFamily: 'FranklinGothic-Book',
     color: COLORS.text,
   },
-  editButton: {
+  shareButton: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.primary,
     borderRadius: 8,
     paddingVertical: 10,
+    gap: 6,
   },
-  editButtonText: {
+  shareButtonText: {
     fontSize: 14,
     fontFamily: 'FranklinGothic-Demi',
     color: COLORS.textOnPrimary,
@@ -618,16 +728,15 @@ const styles = StyleSheet.create({
     fontFamily: 'FranklinGothic-Book',
   },
   // Training Tab Styles
-  aiButtonContainer: {
-    marginBottom: 24,
-  },
   aiButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: COLORS.primary,
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
+    marginBottom: 24,
   },
   aiButtonText: {
     fontSize: 16,
@@ -673,6 +782,48 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'FranklinGothic-Demi',
     color: COLORS.textOnPrimary,
+  },
+  // AI Loading Modal Styles
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    backgroundColor: COLORS.background,
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    width: '80%',
+    maxWidth: 320,
+  },
+  loadingTitle: {
+    fontSize: 18,
+    fontFamily: 'FranklinGothic-Heavy',
+    color: COLORS.text,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  loadingMessage: {
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  loadingProgress: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  progressDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.border,
+  },
+  progressDotActive: {
+    backgroundColor: COLORS.primary,
   },
 });
 

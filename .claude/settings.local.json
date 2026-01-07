@@ -2,7 +2,19 @@
   "permissions": {
     "allow": [
       "Bash(npm install:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(xcodebuild -version:*)",
+      "Bash(emulator:*)",
+      "Bash(npx --version)",
+      "Bash(xcrun simctl:*)",
+      "Bash(watchman version:*)",
+      "Bash(watchman shutdown-server:*)",
+      "Bash(watchman watch-del-all:*)",
+      "Bash(brew reinstall:*)",
+      "Bash(open -a Simulator)",
+      "Bash(xargs:*)",
+      "Bash(npx expo install:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

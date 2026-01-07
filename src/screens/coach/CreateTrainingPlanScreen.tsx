@@ -6,9 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS } from '../../constants';
 
@@ -68,6 +70,10 @@ const CreateTrainingPlanScreen: React.FC = () => {
   });
   const [additionalNotes, setAdditionalNotes] = useState('');
 
+  // Edit exercise modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
+
   const durationOptions = [
     '1 week',
     '2 weeks',
@@ -84,8 +90,28 @@ const CreateTrainingPlanScreen: React.FC = () => {
   };
 
   const handleEditExercise = (id: string) => {
-    // Navigate to edit or open modal
-    console.log('Edit exercise:', id);
+    const exercise = exercises.find((ex) => ex.id === id);
+    if (exercise) {
+      setEditingExercise({ ...exercise });
+      setShowEditModal(true);
+    }
+  };
+
+  const handleSaveEditedExercise = () => {
+    if (editingExercise) {
+      setExercises(
+        exercises.map((ex) =>
+          ex.id === editingExercise.id ? editingExercise : ex
+        )
+      );
+      setShowEditModal(false);
+      setEditingExercise(null);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setShowEditModal(false);
+    setEditingExercise(null);
   };
 
   const handleAddExercise = () => {
@@ -310,18 +336,11 @@ const CreateTrainingPlanScreen: React.FC = () => {
               </View>
 
               <TouchableOpacity
-                style={styles.addAnotherButtonContainer}
+                style={styles.addAnotherButton}
                 onPress={handleAddExercise}
               >
-                <LinearGradient
-                  colors={['#FFB800', '#FF6B00', '#FF3000']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.addAnotherButton}
-                >
-                  <Ionicons name="add" size={20} color={COLORS.textOnPrimary} />
-                  <Text style={styles.addAnotherButtonText}>Add Another Exercise</Text>
-                </LinearGradient>
+                <Ionicons name="add" size={20} color={COLORS.textOnPrimary} />
+                <Text style={styles.addAnotherButtonText}>Add Another Exercise</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -344,17 +363,10 @@ const CreateTrainingPlanScreen: React.FC = () => {
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={styles.assignButtonContainer}
+            style={styles.assignButton}
             onPress={handleAssignPlan}
           >
-            <LinearGradient
-              colors={['#FFB800', '#FF6B00', '#FF3000']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.assignButton}
-            >
-              <Text style={styles.assignButtonText}>Assign Plan</Text>
-            </LinearGradient>
+            <Text style={styles.assignButtonText}>Assign Plan</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
@@ -362,6 +374,115 @@ const CreateTrainingPlanScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Edit Exercise Modal */}
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Exercise</Text>
+              <TouchableOpacity onPress={handleCancelEdit}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              <Text style={styles.inputLabel}>
+                Exercise Name <Text style={styles.required}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.input}
+                value={editingExercise?.name || ''}
+                onChangeText={(text) =>
+                  setEditingExercise((prev) => prev ? { ...prev, name: text } : null)
+                }
+                placeholder="Enter exercise name"
+                placeholderTextColor={COLORS.textSecondary}
+              />
+
+              <Text style={styles.inputLabel}>
+                Description <Text style={styles.required}>*</Text>
+              </Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={editingExercise?.description || ''}
+                onChangeText={(text) =>
+                  setEditingExercise((prev) => prev ? { ...prev, description: text } : null)
+                }
+                placeholder="Enter exercise description"
+                placeholderTextColor={COLORS.textSecondary}
+                multiline
+                numberOfLines={3}
+              />
+
+              <View style={styles.exerciseInputRow}>
+                <View style={styles.exerciseInputItem}>
+                  <Text style={styles.inputLabel}>Sets</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editingExercise?.sets || ''}
+                    onChangeText={(text) =>
+                      setEditingExercise((prev) => prev ? { ...prev, sets: text } : null)
+                    }
+                    placeholder="0"
+                    placeholderTextColor={COLORS.textSecondary}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={styles.exerciseInputItem}>
+                  <Text style={styles.inputLabel}>Reps</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editingExercise?.reps || ''}
+                    onChangeText={(text) =>
+                      setEditingExercise((prev) => prev ? { ...prev, reps: text } : null)
+                    }
+                    placeholder="0"
+                    placeholderTextColor={COLORS.textSecondary}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <View style={styles.exerciseInputItem}>
+                  <Text style={styles.inputLabel}>Minutes</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editingExercise?.minutes || ''}
+                    onChangeText={(text) =>
+                      setEditingExercise((prev) => prev ? { ...prev, minutes: text } : null)
+                    }
+                    placeholder="0"
+                    placeholderTextColor={COLORS.textSecondary}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={handleCancelEdit}
+              >
+                <Text style={styles.modalCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalSaveButton}
+                onPress={handleSaveEditedExercise}
+              >
+                <Text style={styles.modalSaveButtonText}>Save Changes</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -577,16 +698,15 @@ const styles = StyleSheet.create({
   exerciseInputItem: {
     flex: 1,
   },
-  addAnotherButtonContainer: {
-    marginTop: 8,
-  },
   addAnotherButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: COLORS.primary,
     paddingVertical: 12,
     borderRadius: 8,
     gap: 6,
+    marginTop: 8,
   },
   addAnotherButtonText: {
     fontSize: 14,
@@ -597,13 +717,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 40,
   },
-  assignButtonContainer: {
-    marginBottom: 12,
-  },
   assignButton: {
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    marginBottom: 12,
   },
   assignButtonText: {
     fontSize: 16,
@@ -622,6 +741,66 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'FranklinGothic-Book',
     color: COLORS.text,
+  },
+  // Edit Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'FranklinGothic-Heavy',
+    color: COLORS.text,
+  },
+  modalContent: {
+    padding: 20,
+    paddingBottom: 0,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    padding: 20,
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  modalCancelButtonText: {
+    fontSize: 15,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.text,
+  },
+  modalSaveButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+  },
+  modalSaveButtonText: {
+    fontSize: 15,
+    fontFamily: 'FranklinGothic-Demi',
+    color: COLORS.textOnPrimary,
   },
 });
 

@@ -1,19 +1,39 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { PLAYER_ROUTES } from '../constants/routes';
+import { COLORS } from '../constants';
 
 import PlayerHomeScreen from '../screens/player/PlayerHomeScreen';
+import PlayerMatchesScreen from '../screens/player/PlayerMatchesScreen';
 import PlayerTrainingScreen from '../screens/player/PlayerTrainingScreen';
 import PlayerProfileScreen from '../screens/player/PlayerProfileScreen';
-import SettingsScreen from '../screens/shared/SettingsScreen';
+import PlayerMatchDetailScreen from '../screens/shared/PlayerMatchDetailScreen';
+import PlayerTrainingPlanDetailScreen from '../screens/player/PlayerTrainingPlanDetailScreen';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
-const PlayerNavigator = () => {
+const PlayerTabs = () => {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.textSecondary,
+        tabBarStyle: {
+          backgroundColor: COLORS.background,
+          borderTopColor: COLORS.border,
+          height: 80,
+        },
+        tabBarLabelStyle: {
+          fontFamily: 'FranklinGothic-Book',
+          fontSize: 12,
+        },
+        tabBarIconStyle: {
+          marginTop: 4,
+        },
       }}
     >
       <Tab.Screen
@@ -21,7 +41,19 @@ const PlayerNavigator = () => {
         component={PlayerHomeScreen}
         options={{
           title: 'Home',
-          tabBarLabel: 'Home',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="home-outline" size={22} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name={PLAYER_ROUTES.MATCHES}
+        component={PlayerMatchesScreen}
+        options={{
+          title: 'Matches',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="football-outline" size={22} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -29,7 +61,9 @@ const PlayerNavigator = () => {
         component={PlayerTrainingScreen}
         options={{
           title: 'Training',
-          tabBarLabel: 'Training',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="fitness-outline" size={22} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -37,18 +71,26 @@ const PlayerNavigator = () => {
         component={PlayerProfileScreen}
         options={{
           title: 'Profile',
-          tabBarLabel: 'Profile',
-        }}
-      />
-      <Tab.Screen
-        name={PLAYER_ROUTES.SETTINGS}
-        component={SettingsScreen}
-        options={{
-          title: 'Settings',
-          tabBarLabel: 'Settings',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="person-outline" size={22} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>
+  );
+};
+
+const PlayerNavigator = () => {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="PlayerTabs" component={PlayerTabs} />
+      <Stack.Screen name={PLAYER_ROUTES.MATCH_DETAIL} component={PlayerMatchDetailScreen} />
+      <Stack.Screen name={PLAYER_ROUTES.TRAINING_PLAN_DETAIL} component={PlayerTrainingPlanDetailScreen} />
+    </Stack.Navigator>
   );
 };
 

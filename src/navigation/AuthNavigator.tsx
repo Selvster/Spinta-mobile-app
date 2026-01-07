@@ -6,6 +6,7 @@ import WelcomeScreen from '../screens/auth/WelcomeScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import RoleSelectionScreen from '../screens/auth/RoleSelectionScreen';
+import { RegistrationSuccessScreen } from '../screens/auth/RegistrationSuccessScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -30,6 +31,11 @@ const AuthNavigator = () => {
       <Stack.Screen
         name={AUTH_ROUTES.WELCOME}
         component={WelcomeScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name={AUTH_ROUTES.REGISTRATION_SUCCESS}
+        component={RegistrationSuccessScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

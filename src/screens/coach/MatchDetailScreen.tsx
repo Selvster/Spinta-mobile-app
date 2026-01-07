@@ -288,7 +288,8 @@ const MatchDetailScreen: React.FC = () => {
 
               <StatBar label="Expected Goals (xG)" homeValue={2.4} awayValue={1.8} />
               <StatBar label="Total Shots" homeValue={9} awayValue={11} />
-              <StatBar label="Shots on Target" homeValue={6} awayValue={9} />
+              <StatBar label="Goalkeeper Saves" homeValue={6} awayValue={4} />
+              <StatBar label="Total Dribbles" homeValue={8} awayValue={6} />
               <StatBar label="Total Passes" homeValue={5} awayValue={5} />
             </View>
 
@@ -307,7 +308,7 @@ const MatchDetailScreen: React.FC = () => {
               <Text style={styles.statsSectionTitle}>Passing</Text>
               <StatBar label="Total Passes" homeValue={487} awayValue={412} />
               <StatBar label="Passes Completed" homeValue={402} awayValue={326} />
-              <StatBar label="Passes in Opp Half" homeValue={142} awayValue={98} />
+              <StatBar label="Passes in Final Third" homeValue={142} awayValue={98} />
               <StatBar label="Long Passes" homeValue={8} awayValue={15} />
               <StatBar label="Crosses" homeValue={17} awayValue={12} />
             </View>
@@ -324,8 +325,8 @@ const MatchDetailScreen: React.FC = () => {
 
               <StatBar label="Total Tackles" homeValue={18} awayValue={22} />
               <StatBar label="Interceptions" homeValue={12} awayValue={8} />
-              <StatBar label="Blocks" homeValue={8} awayValue={6} />
-              <StatBar label="Goalkeeper Saves" homeValue={6} awayValue={42} />
+              <StatBar label="Ball Recoveries" homeValue={8} awayValue={6} />
+              <StatBar label="Goalkeeper Saves" homeValue={6} awayValue={4} />
             </View>
           </View>
         )}

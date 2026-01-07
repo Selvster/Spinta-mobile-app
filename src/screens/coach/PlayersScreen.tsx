@@ -8,9 +8,12 @@ import { COACH_ROUTES } from '../../constants/routes';
 interface Player {
   id: string;
   name: string;
-  number: string;
-  status: 'joined' | 'pending';
-  avatar?: string;
+  jerseyNumber: number;
+  status: 'Active' | 'Pending Invitation';
+  code?: string;
+  height?: string;
+  age?: number;
+  position?: string;
 }
 
 const PlayersScreen: React.FC = () => {
@@ -22,11 +25,11 @@ const PlayersScreen: React.FC = () => {
   const pendingPlayers = 2;
 
   const players: Player[] = [
-    { id: '1', name: 'Marcus Silva', number: '#10', status: 'joined' },
-    { id: '2', name: 'Jake Thompson', number: '#7', status: 'joined' },
-    { id: '3', name: 'Player #23', number: '', status: 'pending' },
-    { id: '4', name: 'David Chen', number: '#15', status: 'joined' },
-    { id: '5', name: 'Player #9', number: '', status: 'pending' },
+    { id: '1', name: 'Marcus Silva', jerseyNumber: 10, status: 'Active', height: "5'11\"", age: 23, position: 'Forward' },
+    { id: '2', name: 'Jake Thompson', jerseyNumber: 7, status: 'Active', height: "5'9\"", age: 21, position: 'Midfielder' },
+    { id: '3', name: 'Player #23', jerseyNumber: 23, status: 'Pending Invitation', code: 'SP23TH003' },
+    { id: '4', name: 'David Chen', jerseyNumber: 15, status: 'Active', height: "6'0\"", age: 22, position: 'Defender' },
+    { id: '5', name: 'Player #9', jerseyNumber: 9, status: 'Pending Invitation', code: 'SP09TH005' },
   ];
 
   return (
@@ -64,13 +67,13 @@ const PlayersScreen: React.FC = () => {
           <TouchableOpacity
             key={player.id}
             style={styles.playerCard}
-            onPress={() => navigation.navigate(COACH_ROUTES.PLAYER_DETAIL as never)}
+            onPress={() => navigation.navigate(COACH_ROUTES.PLAYER_DETAIL as never, { player } as never)}
             activeOpacity={0.7}
           >
             <View style={styles.playerAvatar}>
-              {player.status === 'joined' ? (
-                <View style={styles.avatarPlaceholder}>
-                  <Ionicons name="person" size={24} color={COLORS.textSecondary} />
+              {player.status === 'Active' ? (
+                <View style={[styles.avatarPlaceholder, { backgroundColor: COLORS.primary }]}>
+                  <Text style={styles.avatarText}>{player.jerseyNumber}</Text>
                 </View>
               ) : (
                 <View style={styles.avatarPlaceholder}>
@@ -80,8 +83,8 @@ const PlayersScreen: React.FC = () => {
             </View>
             <View style={styles.playerInfo}>
               <Text style={styles.playerName}>{player.name}</Text>
-              {player.status === 'joined' ? (
-                <Text style={styles.playerNumber}>{player.number}</Text>
+              {player.status === 'Active' ? (
+                <Text style={styles.playerNumber}>#{player.jerseyNumber} • {player.position}</Text>
               ) : (
                 <Text style={styles.pendingText}>Pending Invitation</Text>
               )}
@@ -155,6 +158,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 18,
+    fontFamily: 'FranklinGothic-Heavy',
+    color: COLORS.textOnPrimary,
   },
   playerInfo: {
     flex: 1,

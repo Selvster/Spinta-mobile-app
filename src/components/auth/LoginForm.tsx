@@ -29,13 +29,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    // Temporary: Skip API call and login directly as coach
+    // Determine role based on email (temporary until backend is ready)
+    // Use player@test.com for Player, any other email for Coach
+    const isPlayerEmail = data.email.toLowerCase().includes('player');
+
     setUser({
       id: '1',
       email: data.email,
       firstName: 'Test',
-      lastName: 'Coach',
-      role: UserRole.COACH,
+      lastName: isPlayerEmail ? 'Player' : 'Coach',
+      role: isPlayerEmail ? UserRole.PLAYER : UserRole.COACH,
       teamIds: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

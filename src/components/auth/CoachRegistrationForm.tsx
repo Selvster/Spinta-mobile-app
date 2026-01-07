@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Modal, FlatList } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { Ionicons } from '@expo/vector-icons';
 import { Input, Button } from '../common';
@@ -12,11 +12,24 @@ interface CoachRegistrationFormProps {
 
 type CoachStep = 'basic' | 'club';
 
+const AGE_GROUP_OPTIONS = [
+  { label: 'U6', value: 'U6' },
+  { label: 'U8', value: 'U8' },
+  { label: 'U10', value: 'U10' },
+  { label: 'U12', value: 'U12' },
+  { label: 'U14', value: 'U14' },
+  { label: 'U16', value: 'U16' },
+  { label: 'U18', value: 'U18' },
+  { label: 'U21', value: 'U21' },
+  { label: 'Senior (18+)', value: 'Senior' },
+];
+
 export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
   onRegisterSuccess,
 }) => {
   const [currentStep, setCurrentStep] = useState<CoachStep>('basic');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [showAgeGroupPicker, setShowAgeGroupPicker] = useState(false);
   const [formData, setFormData] = useState<any>({
     fullName: '',
     email: '',
@@ -70,7 +83,7 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
 
   const renderStepIndicator = () => {
     const steps = [
-      { key: 'basic', label: 'Basic Info' },
+      { key: 'basic', label: 'Coach Info' },
       { key: 'club', label: 'Club Info' },
     ];
     const currentIndex = steps.findIndex(s => s.key === currentStep);
@@ -286,15 +299,59 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
             <Controller
               control={control}
               name="ageGroup"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <Input
-                  label="Age Group"
-                  placeholder="e.g., U-18, U-21, Senior"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  error={errors.ageGroup?.message}
-                />
+              render={({ field: { onChange, value } }) => (
+                <View>
+                  <Text style={styles.uploadLabel}>Age Group / Level</Text>
+                  <TouchableOpacity
+                    style={styles.dropdownButton}
+                    onPress={() => setShowAgeGroupPicker(true)}
+                  >
+                    <Text style={[styles.dropdownText, !value && styles.dropdownPlaceholder]}>
+                      {value || 'Select age group'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color={COLORS.textSecondary} />
+                  </TouchableOpacity>
+
+                  <Modal
+                    visible={showAgeGroupPicker}
+                    transparent
+                    animationType="slide"
+                    onRequestClose={() => setShowAgeGroupPicker(false)}
+                  >
+                    <TouchableOpacity
+                      style={styles.modalOverlay}
+                      activeOpacity={1}
+                      onPress={() => setShowAgeGroupPicker(false)}
+                    >
+                      <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                          <Text style={styles.modalTitle}>Select Age Group</Text>
+                          <TouchableOpacity onPress={() => setShowAgeGroupPicker(false)}>
+                            <Ionicons name="close" size={24} color={COLORS.text} />
+                          </TouchableOpacity>
+                        </View>
+                        <FlatList
+                          data={AGE_GROUP_OPTIONS}
+                          keyExtractor={(item) => item.value}
+                          renderItem={({ item }) => (
+                            <TouchableOpacity
+                              style={styles.optionItem}
+                              onPress={() => {
+                                onChange(item.value);
+                                setShowAgeGroupPicker(false);
+                              }}
+                            >
+                              <Text style={styles.optionText}>{item.label}</Text>
+                              {value === item.value && (
+                                <Ionicons name="checkmark" size={20} color={COLORS.primary} />
+                              )}
+                            </TouchableOpacity>
+                          )}
+                        />
+                      </View>
+                    </TouchableOpacity>
+                  </Modal>
+                </View>
               )}
             />
 
@@ -475,5 +532,64 @@ const styles = StyleSheet.create({
   },
   nextButton: {
     width: '48%',
+  },
+  dropdownButton: {
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    minHeight: 48,
+  },
+  dropdownText: {
+    fontSize: 16,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.text,
+  },
+  dropdownPlaceholder: {
+    color: COLORS.textSecondary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '60%',
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'FranklinGothic-Demi',
+    color: COLORS.text,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.backgroundSecondary,
+  },
+  optionText: {
+    fontSize: 16,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.text,
   },
 });

@@ -61,16 +61,46 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
           />
         ) : selectedRole === UserRole.COACH ? (
           <CoachRegistrationForm
-            onRegisterSuccess={() => {}}
+            onRegisterSuccess={(data) => {
+              // Navigate to success screen with coach data
+              navigation.navigate(AUTH_ROUTES.REGISTRATION_SUCCESS, {
+                name: data.fullName || 'Coach',
+                role: UserRole.COACH,
+                clubName: data.clubName || 'Football Club',
+                teamLevel: data.ageGroup || 'U16',
+              });
+            }}
           />
         ) : selectedRole === UserRole.PLAYER ? (
           <PlayerRegistrationForm
-            onRegisterSuccess={() => {}}
+            onRegisterSuccess={(data) => {
+              // Navigate to success screen with player data
+              // Calculate age from dateOfBirth if available
+              const age = data.dateOfBirth ?
+                new Date().getFullYear() - new Date(data.dateOfBirth).getFullYear() :
+                18;
+
+              navigation.navigate(AUTH_ROUTES.REGISTRATION_SUCCESS, {
+                name: data.playerName || 'Player',
+                role: UserRole.PLAYER,
+                clubName: 'FC Barcelona Youth', // From prefilled data
+                jerseyNumber: '10', // From prefilled data
+                position: 'Forward', // From prefilled data
+                age,
+              });
+            }}
           />
         ) : (
           <RegistrationForm
             role={selectedRole!}
-            onRegisterSuccess={() => {}}
+            onRegisterSuccess={(data) => {
+              // Generic registration success
+              navigation.navigate(AUTH_ROUTES.REGISTRATION_SUCCESS, {
+                name: `${data.firstName} ${data.lastName}`,
+                role: selectedRole!,
+                clubName: 'Football Club',
+              });
+            }}
           />
         )}
       </ScrollView>

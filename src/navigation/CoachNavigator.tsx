@@ -12,6 +12,8 @@ import ProfileScreen from '../screens/coach/ProfileScreen';
 import MatchDetailScreen from '../screens/coach/MatchDetailScreen';
 import PlayerDetailScreen from '../screens/coach/PlayerDetailScreen';
 import CreateTrainingPlanScreen from '../screens/coach/CreateTrainingPlanScreen';
+import TrainingPlanDetailScreen from '../screens/coach/TrainingPlanDetailScreen';
+import PlayerMatchDetailScreen from '../screens/shared/PlayerMatchDetailScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -91,7 +93,9 @@ const CoachNavigator = () => {
       <Stack.Screen name="CoachTabs" component={CoachTabs} />
       <Stack.Screen name={COACH_ROUTES.MATCH_DETAIL} component={MatchDetailScreen} />
       <Stack.Screen name={COACH_ROUTES.PLAYER_DETAIL} component={PlayerDetailScreen} />
+      <Stack.Screen name={COACH_ROUTES.PLAYER_MATCH_DETAIL} component={PlayerMatchDetailScreen} />
       <Stack.Screen name={COACH_ROUTES.CREATE_TRAINING_PLAN} component={CreateTrainingPlanScreen} />
+      <Stack.Screen name={COACH_ROUTES.TRAINING_PLAN_DETAIL} component={TrainingPlanDetailScreen} />
     </Stack.Navigator>
   );
 };

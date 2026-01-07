@@ -1,2 +1,2 @@
-export { default as AttributeRadar } from './AttributeRadar';
-export type { Attribute } from './AttributeRadar';
+// Re-export from shared for backwards compatibility
+export { AttributeRadar, type Attribute } from '../shared';

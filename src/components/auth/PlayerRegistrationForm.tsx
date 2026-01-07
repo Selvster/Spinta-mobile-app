@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { Ionicons } from '@expo/vector-icons';
 import { Input, Button } from '../common';
@@ -17,10 +17,11 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState<PlayerStep>('invitation');
   const [invitationCode, setInvitationCode] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [playerName, setPlayerName] = useState('John Smith');
 
   // Dummy prefilled data (would come from invitation code validation)
   const prefilledData = {
-    playerName: 'John Smith',
     jerseyNumber: '10',
     position: 'Forward',
     club: 'FC Barcelona Youth',
@@ -52,6 +53,15 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
     if (currentStep === 'info') {
       setCurrentStep('invitation');
     }
+  };
+
+  const handleImagePick = () => {
+    // Placeholder for image picker functionality
+    Alert.alert(
+      'Photo Upload',
+      'Image picker will be implemented here. You can add expo-image-picker library for full functionality.',
+      [{ text: 'OK' }]
+    );
   };
 
   const onSubmit = async (data: RegisterFormData) => {
@@ -142,38 +152,71 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
 
         {currentStep === 'info' && (
           <>
+            <View style={styles.uploadContainer}>
+              <Text style={styles.uploadLabel}>Player Photo</Text>
+              <TouchableOpacity
+                style={styles.uploadButton}
+                onPress={handleImagePick}
+              >
+                <Ionicons name="cloud-upload-outline" size={24} color={COLORS.primary} />
+                <Text style={styles.uploadButtonText}>
+                  {selectedImage ? 'Change Photo' : 'Upload Photo'}
+                </Text>
+              </TouchableOpacity>
+              {selectedImage && (
+                <Text style={styles.uploadedFileName}>Photo selected</Text>
+              )}
+            </View>
+
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Club Information</Text>
               <Text style={styles.sectionSubtitle}>(Pre-filled from invitation)</Text>
             </View>
 
-            <Input
-              label="Player Name"
-              value={prefilledData.playerName}
-              editable={false}
-              style={styles.disabledInput}
-            />
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Player Name</Text>
+              <Input
+                value={playerName}
+                onChangeText={setPlayerName}
+                placeholder="Enter your name"
+              />
+            </View>
 
-            <Input
-              label="Jersey Number"
-              value={prefilledData.jerseyNumber}
-              editable={false}
-              style={styles.disabledInput}
-            />
+            <View style={styles.disabledInputContainer}>
+              <Input
+                label="Jersey Number"
+                value={prefilledData.jerseyNumber}
+                editable={false}
+                style={styles.disabledInput}
+              />
+              <View style={styles.lockIconContainer}>
+                <Ionicons name="lock-closed" size={16} color={COLORS.textSecondary} />
+              </View>
+            </View>
 
-            <Input
-              label="Position"
-              value={prefilledData.position}
-              editable={false}
-              style={styles.disabledInput}
-            />
+            <View style={styles.disabledInputContainer}>
+              <Input
+                label="Position"
+                value={prefilledData.position}
+                editable={false}
+                style={styles.disabledInput}
+              />
+              <View style={styles.lockIconContainer}>
+                <Ionicons name="lock-closed" size={16} color={COLORS.textSecondary} />
+              </View>
+            </View>
 
-            <Input
-              label="Club"
-              value={prefilledData.club}
-              editable={false}
-              style={styles.disabledInput}
-            />
+            <View style={styles.disabledInputContainer}>
+              <Input
+                label="Club"
+                value={prefilledData.club}
+                editable={false}
+                style={styles.disabledInput}
+              />
+              <View style={styles.lockIconContainer}>
+                <Ionicons name="lock-closed" size={16} color={COLORS.textSecondary} />
+              </View>
+            </View>
 
             <View style={styles.sectionDivider} />
 
@@ -403,8 +446,60 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.border,
     marginVertical: 24,
   },
+  uploadContainer: {
+    marginBottom: 16,
+  },
+  uploadLabel: {
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Demi',
+    color: COLORS.text,
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  uploadButton: {
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    borderStyle: 'dashed',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.background,
+  },
+  uploadButtonText: {
+    fontSize: 16,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.primary,
+    marginLeft: 8,
+  },
+  uploadedFileName: {
+    fontSize: 12,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.textSecondary,
+    marginTop: 8,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Demi',
+    color: COLORS.text,
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  disabledInputContainer: {
+    position: 'relative',
+  },
   disabledInput: {
-    opacity: 0.6,
+    backgroundColor: COLORS.backgroundSecondary,
+  },
+  lockIconContainer: {
+    position: 'absolute',
+    right: 16,
+    top: 40,
   },
   buttonContainer: {
     flexDirection: 'row',

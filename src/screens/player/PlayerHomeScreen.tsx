@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants';
 import { AttributeRadar, Attribute } from '../../components/shared';
@@ -66,7 +66,14 @@ const PlayerHomeScreen: React.FC = () => {
         {/* Player Info Section */}
         <View style={styles.playerInfoSection}>
           <View style={styles.largeAvatar}>
-            <Text style={styles.largeAvatarText}>{player.jersey_number}</Text>
+            {player.profile_image_url ? (
+              <Image
+                source={{ uri: player.profile_image_url }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Text style={styles.largeAvatarText}>{player.jersey_number}</Text>
+            )}
           </View>
           <Text style={styles.playerName}>{player.player_name}</Text>
           <Text style={styles.playerDetails}>
@@ -154,6 +161,11 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontFamily: 'FranklinGothic-Heavy',
     color: COLORS.textOnPrimary,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 50,
   },
   playerName: {
     fontSize: 20,

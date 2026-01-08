@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Modal, Animated, Easing, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Modal, Animated, Easing, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -245,7 +245,14 @@ const PlayerDetailScreen: React.FC = () => {
         <View style={styles.playerInfoSection}>
           {/* Large Avatar */}
           <View style={styles.largeAvatar}>
-            <Text style={styles.largeAvatarText}>{player.jersey_number}</Text>
+            {player.profile_image_url ? (
+              <Image
+                source={{ uri: player.profile_image_url }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Text style={styles.largeAvatarText}>{player.jersey_number}</Text>
+            )}
           </View>
 
           {/* Player Name */}
@@ -578,6 +585,11 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontFamily: 'FranklinGothic-Heavy',
     color: COLORS.textOnPrimary,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 50,
   },
   playerName: {
     fontSize: 20,

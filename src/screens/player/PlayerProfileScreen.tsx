@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants';
@@ -49,11 +50,7 @@ const PlayerProfileScreen: React.FC = () => {
   // Format height display
   const formatHeight = (height: number | null): string => {
     if (!height) return '-';
-    // Convert cm to feet/inches for display
-    const totalInches = height / 2.54;
-    const feet = Math.floor(totalInches / 12);
-    const inches = Math.round(totalInches % 12);
-    return `${feet}'${inches}"`;
+    return `${height} cm`;
   };
 
   return (
@@ -62,7 +59,14 @@ const PlayerProfileScreen: React.FC = () => {
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>{player?.jersey_number || '?'}</Text>
+            {player?.profile_image_url ? (
+              <Image
+                source={{ uri: player.profile_image_url }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Text style={styles.avatarText}>{player?.jersey_number || '?'}</Text>
+            )}
           </View>
           <Text style={styles.name}>{player?.player_name || 'Player'}</Text>
           <Text style={styles.position}>
@@ -197,6 +201,11 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontFamily: 'FranklinGothic-Heavy',
     color: COLORS.textOnPrimary,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 50,
   },
   name: {
     fontSize: 22,

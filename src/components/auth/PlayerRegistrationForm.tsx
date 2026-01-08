@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Platform } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Ionicons } from '@expo/vector-icons';
-import { Input, Button } from '../common';
-import { convertDateToISO } from '../../utils/validators';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Input, Button, ImagePickerButton } from '../common';
+import { convertDateToISO, playerFormSchema, PlayerFormData } from '../../utils/validators';
 import { useVerifyInvite, useRegisterPlayer } from '../../api/mutations/auth.mutations';
 import { VerifyInviteResponse } from '../../types';
 import { COLORS } from '../../constants';
@@ -14,21 +16,14 @@ interface PlayerRegistrationFormProps {
 
 type PlayerStep = 'invitation' | 'info';
 
-interface PlayerFormData {
-  email: string;
-  password: string;
-  confirmPassword: string;
-  dateOfBirth: string;
-  height: string;
-  playerName: string;
-}
-
 export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
   onRegisterSuccess,
 }) => {
   const [currentStep, setCurrentStep] = useState<PlayerStep>('invitation');
   const [invitationCode, setInvitationCode] = useState('');
   const [verifiedPlayerData, setVerifiedPlayerData] = useState<VerifyInviteResponse['player_data'] | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
 
   const verifyInviteMutation = useVerifyInvite();
   const registerPlayerMutation = useRegisterPlayer();
@@ -39,6 +34,7 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
     setValue,
     formState: { errors },
   } = useForm<PlayerFormData>({
+    resolver: zodResolver(playerFormSchema),
     mode: 'onChange',
     defaultValues: {
       email: '',
@@ -47,6 +43,7 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
       dateOfBirth: '',
       height: '',
       playerName: '',
+      profile_image_url: '',
     },
   });
 
@@ -65,6 +62,8 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
         setVerifiedPlayerData(response.player_data);
         setValue('playerName', response.player_data.player_name);
         setCurrentStep('info');
+      } else {
+        Alert.alert('Invalid Code', 'This invitation code is not valid. Please check with your coach.');
       }
     } catch (error: any) {
       const message =
@@ -80,22 +79,9 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
     }
   };
 
-  const handleImagePick = () => {
-    Alert.alert(
-      'Photo Upload',
-      'Image picker will be implemented here. You can add expo-image-picker library for full functionality.',
-      [{ text: 'OK' }]
-    );
-  };
-
   const onSubmit = async (data: PlayerFormData) => {
     if (!verifiedPlayerData) {
       Alert.alert('Error', 'Please verify your invitation code first');
-      return;
-    }
-
-    if (data.password !== data.confirmPassword) {
-      Alert.alert('Error', "Passwords don't match");
       return;
     }
 
@@ -115,6 +101,7 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
         password: data.password,
         birth_date: birthDate,
         height: heightNum,
+        profile_image_url: data.profile_image_url || undefined,
       });
 
       onRegisterSuccess?.();
@@ -211,16 +198,22 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
 
         {currentStep === 'info' && verifiedPlayerData && (
           <>
-            <View style={styles.uploadContainer}>
-              <Text style={styles.uploadLabel}>Player Photo (Optional)</Text>
-              <TouchableOpacity
-                style={styles.uploadButton}
-                onPress={handleImagePick}
-              >
-                <Ionicons name="cloud-upload-outline" size={24} color={COLORS.primary} />
-                <Text style={styles.uploadButtonText}>Upload Photo</Text>
-              </TouchableOpacity>
-            </View>
+            <Controller
+              control={control}
+              name="profile_image_url"
+              render={({ field: { onChange, value } }) => (
+                <ImagePickerButton
+                  label="Player Photo (Optional)"
+                  value={value}
+                  onImageUploaded={onChange}
+                  onError={(error) => Alert.alert('Upload Error', error)}
+                  folder="players"
+                  size={100}
+                  shape="circle"
+                  placeholder="Add Photo"
+                />
+              )}
+            />
 
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Club Information</Text>
@@ -337,15 +330,65 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
             <Controller
               control={control}
               name="dateOfBirth"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <Input
-                  label="Date of Birth"
-                  placeholder="DD/MM/YYYY"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  error={errors.dateOfBirth?.message}
-                />
+              render={({ field: { onChange, value } }) => (
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.fieldLabel}>Date of Birth</Text>
+                  <TouchableOpacity
+                    style={styles.datePickerButton}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Text style={[styles.datePickerText, !value && styles.datePickerPlaceholder]}>
+                      {value || 'Select date'}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
+                  </TouchableOpacity>
+                  {errors.dateOfBirth?.message && (
+                    <Text style={styles.errorText}>{errors.dateOfBirth.message}</Text>
+                  )}
+                  {showDatePicker && Platform.OS === 'ios' && (
+                    <View style={styles.datePickerContainer}>
+                      <View style={styles.datePickerHeader}>
+                        <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                          <Text style={styles.datePickerCancel}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => {
+                          if (selectedDate) {
+                            const formatted = `${selectedDate.getDate().toString().padStart(2, '0')}/${(selectedDate.getMonth() + 1).toString().padStart(2, '0')}/${selectedDate.getFullYear()}`;
+                            onChange(formatted);
+                          }
+                          setShowDatePicker(false);
+                        }}>
+                          <Text style={styles.datePickerDone}>Done</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <DateTimePicker
+                        value={selectedDate || new Date()}
+                        mode="date"
+                        display="spinner"
+                        onChange={(event, date) => {
+                          if (date) setSelectedDate(date);
+                        }}
+                        maximumDate={new Date()}
+                      />
+                    </View>
+                  )}
+                  {showDatePicker && Platform.OS === 'android' && (
+                    <DateTimePicker
+                      value={selectedDate || new Date()}
+                      mode="date"
+                      display="default"
+                      onChange={(event, date) => {
+                        setShowDatePicker(false);
+                        if (date) {
+                          setSelectedDate(date);
+                          const formatted = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                          onChange(formatted);
+                        }
+                      }}
+                      maximumDate={new Date()}
+                    />
+                  )}
+                </View>
               )}
             />
 
@@ -506,6 +549,66 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: COLORS.border,
     marginVertical: 24,
+  },
+  fieldContainer: {
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Demi',
+    color: COLORS.text,
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  datePickerButton: {
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    minHeight: 48,
+  },
+  datePickerText: {
+    fontSize: 16,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.text,
+  },
+  datePickerPlaceholder: {
+    color: COLORS.textSecondary,
+  },
+  datePickerContainer: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: 12,
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  datePickerCancel: {
+    fontSize: 16,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.textSecondary,
+  },
+  datePickerDone: {
+    fontSize: 16,
+    fontFamily: 'FranklinGothic-Demi',
+    color: COLORS.primary,
+  },
+  errorText: {
+    fontSize: 12,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.error,
+    marginTop: 4,
   },
   uploadContainer: {
     marginBottom: 16,

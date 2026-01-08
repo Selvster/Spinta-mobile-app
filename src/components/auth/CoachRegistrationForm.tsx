@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Modal, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Modal, FlatList, Platform } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Ionicons } from '@expo/vector-icons';
-import { Input, Button } from '../common';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Input, Button, ImagePickerButton } from '../common';
 import {
   coachRegistrationSchema,
   CoachRegistrationFormData,
@@ -30,11 +31,19 @@ const AGE_GROUP_OPTIONS = [
   { label: 'Senior (18+)', value: 'Senior' },
 ];
 
+const GENDER_OPTIONS = [
+  { label: 'Male', value: 'Male' },
+  { label: 'Female', value: 'Female' },
+];
+
 export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
   onRegisterSuccess,
 }) => {
   const [currentStep, setCurrentStep] = useState<CoachStep>('basic');
   const [showAgeGroupPicker, setShowAgeGroupPicker] = useState(false);
+  const [showGenderPicker, setShowGenderPicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
 
   const registerCoachMutation = useRegisterCoach();
 
@@ -74,14 +83,6 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
     if (currentStep === 'club') {
       setCurrentStep('basic');
     }
-  };
-
-  const handleImagePick = () => {
-    Alert.alert(
-      'Image Upload',
-      'Image picker will be implemented here. You can add expo-image-picker library for full functionality.',
-      [{ text: 'OK' }]
-    );
   };
 
   const onSubmit = async (data: CoachRegistrationFormData) => {
@@ -249,30 +250,121 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
             <Controller
               control={control}
               name="birth_date"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <Input
-                  label="Date of Birth (Optional)"
-                  placeholder="DD/MM/YYYY"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  error={errors.birth_date?.message}
-                />
+              render={({ field: { onChange, value } }) => (
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.uploadLabel}>Date of Birth (Optional)</Text>
+                  <TouchableOpacity
+                    style={styles.dropdownButton}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Text style={[styles.dropdownText, !value && styles.dropdownPlaceholder]}>
+                      {value || 'Select date'}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={20} color={COLORS.textSecondary} />
+                  </TouchableOpacity>
+                  {showDatePicker && Platform.OS === 'ios' && (
+                    <View style={styles.datePickerContainer}>
+                      <View style={styles.datePickerHeader}>
+                        <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                          <Text style={styles.datePickerCancel}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => {
+                          if (selectedDate) {
+                            const formatted = `${selectedDate.getDate().toString().padStart(2, '0')}/${(selectedDate.getMonth() + 1).toString().padStart(2, '0')}/${selectedDate.getFullYear()}`;
+                            onChange(formatted);
+                          }
+                          setShowDatePicker(false);
+                        }}>
+                          <Text style={styles.datePickerDone}>Done</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <DateTimePicker
+                        value={selectedDate || new Date()}
+                        mode="date"
+                        display="spinner"
+                        onChange={(event, date) => {
+                          if (date) setSelectedDate(date);
+                        }}
+                        maximumDate={new Date()}
+                      />
+                    </View>
+                  )}
+                  {showDatePicker && Platform.OS === 'android' && (
+                    <DateTimePicker
+                      value={selectedDate || new Date()}
+                      mode="date"
+                      display="default"
+                      onChange={(event, date) => {
+                        setShowDatePicker(false);
+                        if (date) {
+                          setSelectedDate(date);
+                          const formatted = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                          onChange(formatted);
+                        }
+                      }}
+                      maximumDate={new Date()}
+                    />
+                  )}
+                </View>
               )}
             />
 
             <Controller
               control={control}
               name="gender"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <Input
-                  label="Gender (Optional)"
-                  placeholder="Male / Female / Other"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  error={errors.gender?.message}
-                />
+              render={({ field: { onChange, value } }) => (
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.uploadLabel}>Gender (Optional)</Text>
+                  <TouchableOpacity
+                    style={styles.dropdownButton}
+                    onPress={() => setShowGenderPicker(true)}
+                  >
+                    <Text style={[styles.dropdownText, !value && styles.dropdownPlaceholder]}>
+                      {value || 'Select gender'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color={COLORS.textSecondary} />
+                  </TouchableOpacity>
+
+                  <Modal
+                    visible={showGenderPicker}
+                    transparent
+                    animationType="slide"
+                    onRequestClose={() => setShowGenderPicker(false)}
+                  >
+                    <TouchableOpacity
+                      style={styles.modalOverlay}
+                      activeOpacity={1}
+                      onPress={() => setShowGenderPicker(false)}
+                    >
+                      <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                          <Text style={styles.modalTitle}>Select Gender</Text>
+                          <TouchableOpacity onPress={() => setShowGenderPicker(false)}>
+                            <Ionicons name="close" size={24} color={COLORS.text} />
+                          </TouchableOpacity>
+                        </View>
+                        <FlatList
+                          data={GENDER_OPTIONS}
+                          keyExtractor={(item) => item.value}
+                          renderItem={({ item }) => (
+                            <TouchableOpacity
+                              style={styles.optionItem}
+                              onPress={() => {
+                                onChange(item.value);
+                                setShowGenderPicker(false);
+                              }}
+                            >
+                              <Text style={styles.optionText}>{item.label}</Text>
+                              {value === item.value && (
+                                <Ionicons name="checkmark" size={20} color={COLORS.primary} />
+                              )}
+                            </TouchableOpacity>
+                          )}
+                        />
+                      </View>
+                    </TouchableOpacity>
+                  </Modal>
+                </View>
               )}
             />
           </>
@@ -280,16 +372,22 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
 
         {currentStep === 'club' && (
           <>
-            <View style={styles.uploadContainer}>
-              <Text style={styles.uploadLabel}>Club Logo (Optional)</Text>
-              <TouchableOpacity
-                style={styles.uploadButton}
-                onPress={handleImagePick}
-              >
-                <Ionicons name="cloud-upload-outline" size={24} color={COLORS.primary} />
-                <Text style={styles.uploadButtonText}>Upload Image</Text>
-              </TouchableOpacity>
-            </View>
+            <Controller
+              control={control}
+              name="club.logo_url"
+              render={({ field: { onChange, value } }) => (
+                <ImagePickerButton
+                  label="Club Logo (Optional)"
+                  value={value}
+                  onImageUploaded={onChange}
+                  onError={(error) => Alert.alert('Upload Error', error)}
+                  folder="clubs"
+                  size={100}
+                  shape="square"
+                  placeholder="Add Logo"
+                />
+              )}
+            />
 
             <Controller
               control={control}
@@ -501,6 +599,33 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     marginBottom: 24,
+  },
+  fieldContainer: {
+    marginBottom: 16,
+  },
+  datePickerContainer: {
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: 12,
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  datePickerCancel: {
+    fontSize: 16,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.textSecondary,
+  },
+  datePickerDone: {
+    fontSize: 16,
+    fontFamily: 'FranklinGothic-Demi',
+    color: COLORS.primary,
   },
   uploadContainer: {
     marginBottom: 16,

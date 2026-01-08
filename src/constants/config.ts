@@ -19,3 +19,10 @@ const getEnvVars = () => {
 const envVars = getEnvVars();
 
 export const API_BASE_URL = envVars.API_BASE_URL;
+
+// Cloudinary Configuration
+// Replace these with your actual Cloudinary credentials
+export const CLOUDINARY_CONFIG = {
+  cloudName: 'dyfsrdy5o', // e.g., 'dxyz123abc'
+  uploadPreset: 'Spinta', // e.g., 'spinta_mobile'
+};

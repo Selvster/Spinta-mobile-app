@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -74,7 +74,12 @@ const PlayersScreen: React.FC = () => {
             activeOpacity={0.7}
           >
             <View style={styles.playerAvatar}>
-              {player.is_linked ? (
+              {player.profile_image_url ? (
+                <Image
+                  source={{ uri: player.profile_image_url }}
+                  style={styles.avatarImage}
+                />
+              ) : player.is_linked ? (
                 <View style={[styles.avatarPlaceholder, { backgroundColor: COLORS.primary }]}>
                   <Text style={styles.avatarText}>{player.jersey_number}</Text>
                 </View>
@@ -182,6 +187,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: 'FranklinGothic-Heavy',
     color: COLORS.textOnPrimary,
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   playerInfo: {
     flex: 1,

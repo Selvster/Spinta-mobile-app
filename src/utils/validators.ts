@@ -66,6 +66,27 @@ export const playerRegistrationSchema = z
 
 export type PlayerRegistrationFormData = z.infer<typeof playerRegistrationSchema>;
 
+// Form schema for PlayerRegistrationForm (uses strings for all inputs)
+export const playerFormSchema = z
+  .object({
+    email: z.string().email('Invalid email address'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+    dateOfBirth: z
+      .string()
+      .min(1, 'Date of birth is required')
+      .regex(/^\d{2}\/\d{2}\/\d{4}$/, 'Use format DD/MM/YYYY'),
+    height: z.string().min(1, 'Height is required'),
+    playerName: z.string().min(1, 'Player name is required'),
+    profile_image_url: z.string().optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  });
+
+export type PlayerFormData = z.infer<typeof playerFormSchema>;
+
 // ============================================
 // HELPER FUNCTIONS
 // ============================================

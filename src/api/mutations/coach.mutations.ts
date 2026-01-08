@@ -23,6 +23,7 @@ export const useGenerateAIPlan = () => {
         ENDPOINTS.COACH.TRAINING_PLAN_GENERATE_AI,
         request
       );
+      console.log('Generate AI Plan Response:', JSON.stringify(data, null, 2));
       return data;
     },
   });

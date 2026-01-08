@@ -1,20 +1,37 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS } from '../../constants';
 import { COACH_ROUTES } from '../../constants/routes';
+import { useCoachDashboard } from '../../api/queries/coach.queries';
+import { Loading } from '../../components/common/Loading';
+import { MatchResult, MatchBasic } from '../../types';
 
 type TabType = 'summary' | 'statistics';
-type MatchResult = 'W' | 'D' | 'L';
 
-interface Match {
-  id: string;
-  date: string;
-  opponent: string;
-  score: string;
-  result: MatchResult;
-}
+// Helper function to format date from "2025-10-08" to "Oct 8, 2025"
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+};
+
+// Helper function to format score
+const formatScore = (ourScore: number, opponentScore: number): string => {
+  return `${ourScore} - ${opponentScore}`;
+};
+
+// Helper function to parse team form string into array
+const parseTeamForm = (formString: string): MatchResult[] => {
+  return formString.split('').filter((c): c is MatchResult =>
+    c === 'W' || c === 'D' || c === 'L'
+  );
+};
 
 const StatRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <View style={styles.statRow}>
@@ -24,23 +41,11 @@ const StatRow: React.FC<{ label: string; value: string }> = ({ label, value }) =
 );
 
 const ClubScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const [activeTab, setActiveTab] = useState<TabType>('summary');
 
-  // Mock data - replace with real data later
-  const clubName = 'Thunder United FC';
-  const coachName = 'Coach: John Smith';
-  const seasonRecord = {
-    wins: 14,
-    draws: 4,
-    losses: 4,
-  };
-  const teamForm: MatchResult[] = ['W', 'W', 'D', 'L', 'W'];
-  const matches: Match[] = [
-    { id: '1', date: 'Oct 8, 2025', opponent: 'City Strikers', score: '3 - 2', result: 'W' },
-    { id: '2', date: 'Oct 5, 2025', opponent: 'Eagles FC', score: '1 - 1', result: 'D' },
-    { id: '3', date: 'Oct 1, 2025', opponent: 'Valley Rangers', score: '2 - 0', result: 'W' },
-  ];
+  // Fetch dashboard data using TanStack Query + Axios
+  const { data, isLoading, error, refetch, isRefetching } = useCoachDashboard();
 
   const getResultColor = (result: MatchResult) => {
     switch (result) {
@@ -64,13 +69,44 @@ const ClubScreen: React.FC = () => {
     }
   };
 
+  // Handle loading state
+  if (isLoading) {
+    return <Loading message="Loading dashboard..." />;
+  }
+
+  // Handle error state
+  if (error || !data) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={COLORS.error} />
+          <Text style={styles.errorText}>Failed to load dashboard</Text>
+          <Text style={styles.errorSubtext}>Please try again later</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Extract data from API response
+  const clubName = data.club.club_name;
+  const clubLogoUrl = data.club.logo_url;
+  const coachName = `Coach: ${data.coach.full_name}`;
+  const seasonRecord = data.season_record;
+  const teamForm = parseTeamForm(data.team_form);
+  const matches = data.matches.matches;
+  const statistics = data.statistics;
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.clubLogo}>
-          <Text style={styles.clubLogoText}>T</Text>
-        </View>
+        {clubLogoUrl ? (
+          <Image source={{ uri: clubLogoUrl }} style={styles.clubLogoImage} />
+        ) : (
+          <View style={styles.clubLogo}>
+            <Text style={styles.clubLogoText}>{clubName.charAt(0)}</Text>
+          </View>
+        )}
         <View style={styles.headerInfo}>
           <Text style={styles.clubName}>{clubName}</Text>
           <Text style={styles.coachName}>{coachName}</Text>
@@ -97,7 +133,16 @@ const ClubScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }>
         {activeTab === 'summary' && (
         <>
           {/* Season Record */}
@@ -164,19 +209,19 @@ const ClubScreen: React.FC = () => {
                 <Text style={styles.seeAllText}>See All</Text>
               </TouchableOpacity>
             </View>
-            {matches.map((match) => (
+            {matches.map((match: MatchBasic) => (
               <TouchableOpacity
-                key={match.id}
+                key={match.match_id}
                 style={styles.matchCard}
-                onPress={() => navigation.navigate(COACH_ROUTES.MATCH_DETAIL as never)}
+                onPress={() => navigation.navigate(COACH_ROUTES.MATCH_DETAIL, { matchId: match.match_id })}
                 activeOpacity={0.7}
               >
                 <View style={styles.matchContent}>
-                  <Text style={styles.matchDate}>{match.date}</Text>
+                  <Text style={styles.matchDate}>{formatDate(match.match_date)}</Text>
                   <View style={styles.matchInfo}>
                     <View style={[styles.resultDot, { backgroundColor: getResultColor(match.result) }]} />
                     <Text style={styles.matchTitle}>
-                      {clubName} {match.score} {match.opponent}
+                      {clubName} {formatScore(match.our_score, match.opponent_score)} {match.opponent_name}
                     </Text>
                   </View>
                   <Text style={[styles.matchResult, { color: getResultColor(match.result) }]}>
@@ -196,10 +241,10 @@ const ClubScreen: React.FC = () => {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Season Summary</Text>
               <View style={styles.statsContainer}>
-                <StatRow label="Matches Played" value="22" />
-                <StatRow label="Goals Scored" value="45" />
-                <StatRow label="Goals Conceded" value="23" />
-                <StatRow label="Total Assists" value="32" />
+                <StatRow label="Matches Played" value={String(statistics.season_summary.matches_played)} />
+                <StatRow label="Goals Scored" value={String(statistics.season_summary.goals_scored)} />
+                <StatRow label="Goals Conceded" value={String(statistics.season_summary.goals_conceded)} />
+                <StatRow label="Total Assists" value={String(statistics.season_summary.total_assists)} />
               </View>
             </View>
 
@@ -207,12 +252,12 @@ const ClubScreen: React.FC = () => {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Attacking</Text>
               <View style={styles.statsContainer}>
-                <StatRow label="Avg Goals per Match" value="2.0" />
-                <StatRow label="Avg xG per Match" value="1.9" />
-                <StatRow label="Avg Total Shots" value="14" />
-                <StatRow label="Avg Shots on Target" value="2.8" />
-                <StatRow label="Avg Dribbles" value="12.5" />
-                <StatRow label="Avg Successful Dribbles" value="8.2" />
+                <StatRow label="Avg Goals per Match" value={String(statistics.attacking.avg_goals_per_match)} />
+                <StatRow label="Avg xG per Match" value={String(statistics.attacking.avg_xg_per_match)} />
+                <StatRow label="Avg Total Shots" value={String(statistics.attacking.avg_total_shots)} />
+                <StatRow label="Avg Shots on Target" value={String(statistics.attacking.avg_shots_on_target)} />
+                <StatRow label="Avg Dribbles" value={String(statistics.attacking.avg_dribbles)} />
+                <StatRow label="Avg Successful Dribbles" value={String(statistics.attacking.avg_successful_dribbles)} />
               </View>
             </View>
 
@@ -220,11 +265,11 @@ const ClubScreen: React.FC = () => {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Passes</Text>
               <View style={styles.statsContainer}>
-                <StatRow label="Avg Possession %" value="58%" />
-                <StatRow label="Avg Passes" value="487" />
-                <StatRow label="Pass Completion %" value="87%" />
-                <StatRow label="Avg Final Third Passes" value="145" />
-                <StatRow label="Avg Crosses" value="18" />
+                <StatRow label="Avg Possession %" value={`${statistics.passes.avg_possession_percentage}%`} />
+                <StatRow label="Avg Passes" value={String(statistics.passes.avg_passes)} />
+                <StatRow label="Pass Completion %" value={`${statistics.passes.pass_completion_percentage}%`} />
+                <StatRow label="Avg Final Third Passes" value={String(statistics.passes.avg_final_third_passes)} />
+                <StatRow label="Avg Crosses" value={String(statistics.passes.avg_crosses)} />
               </View>
             </View>
 
@@ -232,14 +277,14 @@ const ClubScreen: React.FC = () => {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Defending</Text>
               <View style={styles.statsContainer}>
-                <StatRow label="Total Clean Sheets" value="8" />
-                <StatRow label="Avg Goals Conceded per Match" value="1.0" />
-                <StatRow label="Avg Tackles" value="16.3" />
-                <StatRow label="Tackle Success %" value="72%" />
-                <StatRow label="Avg Interceptions" value="11.8" />
-                <StatRow label="Interception Success %" value="85%" />
-                <StatRow label="Avg Ball Recoveries" value="48.5" />
-                <StatRow label="Avg Saves per Match" value="3.2" />
+                <StatRow label="Total Clean Sheets" value={String(statistics.defending.total_clean_sheets)} />
+                <StatRow label="Avg Goals Conceded per Match" value={String(statistics.defending.avg_goals_conceded_per_match)} />
+                <StatRow label="Avg Tackles" value={String(statistics.defending.avg_tackles)} />
+                <StatRow label="Tackle Success %" value={`${statistics.defending.tackle_success_percentage}%`} />
+                <StatRow label="Avg Interceptions" value={String(statistics.defending.avg_interceptions)} />
+                <StatRow label="Interception Success %" value={`${statistics.defending.interception_success_percentage}%`} />
+                <StatRow label="Avg Ball Recoveries" value={String(statistics.defending.avg_ball_recoveries)} />
+                <StatRow label="Avg Saves per Match" value={String(statistics.defending.avg_saves_per_match)} />
               </View>
             </View>
           </>
@@ -276,6 +321,29 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontFamily: 'FranklinGothic-Heavy',
     color: COLORS.textOnPrimary,
+  },
+  clubLogoImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    fontFamily: 'FranklinGothic-Demi',
+    color: COLORS.text,
+    marginTop: 16,
+  },
+  errorSubtext: {
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.textSecondary,
+    marginTop: 8,
   },
   headerInfo: {
     marginLeft: 16,

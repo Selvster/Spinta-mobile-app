@@ -95,10 +95,26 @@ export const usePlayerTrainingDetail = (planId: string) => {
   return useQuery({
     queryKey: playerQueryKeys.trainingDetail(planId),
     queryFn: async () => {
-      const { data } = await apiClient.get<TrainingPlanDetailResponse>(
-        ENDPOINTS.PLAYER.TRAINING_DETAIL(planId)
-      );
-      return data;
+      console.log('Fetching player training detail for planId:', planId);
+      console.log('Endpoint:', ENDPOINTS.PLAYER.TRAINING_DETAIL(planId));
+      try {
+        const { data } = await apiClient.get<TrainingPlanDetailResponse>(
+          ENDPOINTS.PLAYER.TRAINING_DETAIL(planId)
+        );
+        console.log('Player training detail response:', JSON.stringify(data, null, 2));
+        return data;
+      } catch (error: any) {
+        console.log('=== Player Training Detail Error ===');
+        console.log('Status:', error.response?.status);
+        console.log('Status Text:', error.response?.statusText);
+        console.log('Response Data:', JSON.stringify(error.response?.data, null, 2));
+        console.log('Response Headers:', JSON.stringify(error.response?.headers, null, 2));
+        console.log('Request URL:', error.config?.url);
+        console.log('Request Method:', error.config?.method);
+        console.log('Full Error:', error.message);
+        console.log('===================================');
+        throw error;
+      }
     },
     enabled: !!planId,
   });

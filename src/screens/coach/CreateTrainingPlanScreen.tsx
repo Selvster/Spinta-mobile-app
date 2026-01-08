@@ -9,10 +9,22 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { COLORS } from '../../constants';
+import { useCreateTrainingPlan } from '../../api/mutations/coach.mutations';
+import { AIGeneratedPlanResponse } from '../../types';
+
+// Route params type
+type CreateTrainingPlanRouteParams = {
+  CreateTrainingPlan: {
+    playerId: string;
+    aiGeneratedPlan: AIGeneratedPlanResponse;
+  };
+};
 
 interface Exercise {
   id: string;
@@ -25,40 +37,35 @@ interface Exercise {
 
 const CreateTrainingPlanScreen: React.FC = () => {
   const navigation = useNavigation();
+  const route = useRoute<RouteProp<CreateTrainingPlanRouteParams, 'CreateTrainingPlan'>>();
 
-  // Mock player data - would come from navigation params
-  const playerName = 'Marcus Silva';
-  const playerNumber = '#10';
+  // Get data from route params
+  const { playerId, aiGeneratedPlan } = route.params;
 
-  const [planName, setPlanName] = useState('Shooting Accuracy Improvement');
-  const [duration, setDuration] = useState('4 weeks');
+  // Player info from AI response
+  const playerName = aiGeneratedPlan.player_name;
+  const playerNumber = `#${aiGeneratedPlan.jersey_number}`;
+
+  // Create plan mutation
+  const createPlan = useCreateTrainingPlan();
+
+  // Initialize state with AI-generated data
+  const [planName, setPlanName] = useState(aiGeneratedPlan.plan_name);
+  const [duration, setDuration] = useState(aiGeneratedPlan.duration || '4 weeks');
   const [showDurationDropdown, setShowDurationDropdown] = useState(false);
-  const [exercises, setExercises] = useState<Exercise[]>([
-    {
-      id: '1',
-      name: 'Target Shooting Drill',
-      description: 'Practice shooting at designated target zones in the goal from various positions',
-      sets: '3',
-      reps: '10',
-      minutes: '20',
-    },
-    {
-      id: '2',
-      name: 'First Touch & Finish',
-      description: 'Receive passes and shoot on goal with maximum 2 touches',
-      sets: '4',
-      reps: '8',
-      minutes: '15',
-    },
-    {
-      id: '3',
-      name: 'Power Shot Training',
-      description: 'Work on generating shot power while maintaining accuracy',
-      sets: '3',
-      reps: '12',
-      minutes: '18',
-    },
-  ]);
+  const [exercises, setExercises] = useState<Exercise[]>(
+    aiGeneratedPlan.exercises.map((ex, index) => {
+      console.log('Mapping exercise:', JSON.stringify(ex, null, 2));
+      return {
+        id: `ai-${index}`,
+        name: ex.exercise_name || '',
+        description: ex.description || '',
+        sets: String(ex.sets ?? ''),
+        reps: String(ex.reps ?? ''),
+        minutes: String(ex.duration_minutes ?? ''),
+      };
+    })
+  );
 
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [newExercise, setNewExercise] = useState({
@@ -69,6 +76,7 @@ const CreateTrainingPlanScreen: React.FC = () => {
     minutes: '',
   });
   const [additionalNotes, setAdditionalNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Edit exercise modal state
   const [showEditModal, setShowEditModal] = useState(false);
@@ -127,9 +135,43 @@ const CreateTrainingPlanScreen: React.FC = () => {
   };
 
   const handleAssignPlan = () => {
-    // Submit the training plan
-    console.log('Assign plan');
-    navigation.goBack();
+    // Validate required fields
+    if (!planName.trim()) {
+      Alert.alert('Error', 'Please enter a plan name');
+      return;
+    }
+    if (exercises.length === 0) {
+      Alert.alert('Error', 'Please add at least one exercise');
+      return;
+    }
+
+    setIsSubmitting(true);
+    createPlan.mutate(
+      {
+        player_id: playerId,
+        plan_name: planName,
+        duration: duration,
+        coach_notes: additionalNotes || undefined,
+        exercises: exercises.map((ex, index) => ({
+          exercise_name: ex.name,
+          description: ex.description,
+          sets: ex.sets,
+          reps: ex.reps,
+          duration_minutes: ex.minutes,
+          exercise_order: index + 1,
+        })),
+      },
+      {
+        onSuccess: () => {
+          setIsSubmitting(false);
+          navigation.goBack();
+        },
+        onError: () => {
+          setIsSubmitting(false);
+          Alert.alert('Error', 'Failed to create training plan. Please try again.');
+        },
+      }
+    );
   };
 
   return (
@@ -363,10 +405,15 @@ const CreateTrainingPlanScreen: React.FC = () => {
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={styles.assignButton}
+            style={[styles.assignButton, isSubmitting && styles.assignButtonDisabled]}
             onPress={handleAssignPlan}
+            disabled={isSubmitting}
           >
-            <Text style={styles.assignButtonText}>Assign Plan</Text>
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color={COLORS.textOnPrimary} />
+            ) : (
+              <Text style={styles.assignButtonText}>Assign Plan</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
@@ -723,6 +770,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.primary,
     marginBottom: 12,
+  },
+  assignButtonDisabled: {
+    opacity: 0.7,
   },
   assignButtonText: {
     fontSize: 16,

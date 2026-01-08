@@ -34,4 +34,11 @@ export const ENDPOINTS = {
       `/player/training/exercises/${exerciseId}/toggle`,
     PROFILE: '/player/profile',
   },
+
+  // Chat endpoints (3 endpoints)
+  CHAT: {
+    SEND_MESSAGE: '/chat/messages',
+    GET_HISTORY: (sessionId: string) => `/chat/sessions/${sessionId}/messages`,
+    CLEAR_SESSION: (sessionId: string) => `/chat/sessions/${sessionId}`,
+  },
 } as const;

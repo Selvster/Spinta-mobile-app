@@ -1,29 +1,24 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { COLORS } from '../../constants';
+import { useCoachMatchDetail } from '../../api/queries/coach.queries';
+import { Loading } from '../../components/common/Loading';
+import {
+  MatchResult,
+  GoalScorer,
+  OurTeamPlayer,
+  OpponentPlayer,
+  StatComparison
+} from '../../types';
 
 type TabType = 'summary' | 'statistics' | 'lineup';
 
-interface GoalScorer {
-  id: string;
-  name: string;
-  time: string;
-  isHomeTeam: boolean;
-}
-
-interface MatchData {
-  id: string;
-  date: string;
-  homeTeam: string;
-  homeTeamLogo: string;
-  awayTeam: string;
-  awayTeamLogo: string;
-  homeScore: number;
-  awayScore: number;
-  result: 'Win' | 'Loss' | 'Draw';
-}
+// Route params type
+type MatchDetailRouteParams = {
+  MatchDetail: { matchId: string };
+};
 
 interface StatBarProps {
   label: string;
@@ -38,17 +33,34 @@ interface CircularProgressProps {
   size?: number;
 }
 
-interface Player {
-  id: string;
-  name: string;
-  position: string;
-  jerseyNumber: number;
-}
-
 interface PlayerListItemProps {
-  player: Player;
+  player: OurTeamPlayer | OpponentPlayer;
   isHomeTeam: boolean;
 }
+
+// Helper to format date
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+};
+
+// Helper to format goal time
+const formatGoalTime = (minute: number, second: number | null): string => {
+  return `${minute}'`;
+};
+
+// Helper to get result text
+const getResultText = (result: MatchResult): string => {
+  switch (result) {
+    case 'W': return 'Win';
+    case 'D': return 'Draw';
+    case 'L': return 'Loss';
+  }
+};
 
 const StatBar: React.FC<StatBarProps> = ({ label, homeValue, awayValue, isPercentage = false }) => {
   const total = homeValue + awayValue;
@@ -93,9 +105,9 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({ player, isHomeTeam }) =
             { backgroundColor: isHomeTeam ? COLORS.primary : COLORS.textSecondary },
           ]}
         >
-          <Text style={styles.playerAvatarText}>{player.jerseyNumber}</Text>
+          <Text style={styles.playerAvatarText}>{player.jersey_number}</Text>
         </View>
-        <Text style={styles.playerName}>{player.name}</Text>
+        <Text style={styles.playerName}>{player.player_name}</Text>
       </View>
       <Text style={styles.playerPosition}>{player.position}</Text>
     </View>
@@ -104,67 +116,53 @@ const PlayerListItem: React.FC<PlayerListItemProps> = ({ player, isHomeTeam }) =
 
 const MatchDetailScreen: React.FC = () => {
   const navigation = useNavigation();
+  const route = useRoute<RouteProp<MatchDetailRouteParams, 'MatchDetail'>>();
   const [activeTab, setActiveTab] = useState<TabType>('summary');
 
-  // Mock data - will be replaced with actual data from navigation params
-  const matchData: MatchData = {
-    id: '1',
-    date: 'Oct 8, 2025',
-    homeTeam: 'Thunder United FC',
-    homeTeamLogo: 'T',
-    awayTeam: 'City Strikers',
-    awayTeamLogo: 'C',
-    homeScore: 3,
-    awayScore: 2,
-    result: 'Win',
-  };
+  // Get matchId from route params
+  const matchId = route.params?.matchId;
 
-  const goalScorers: GoalScorer[] = [
-    { id: '1', name: 'Marcus Silva', time: "23'", isHomeTeam: true },
-    { id: '2', name: 'D. Martinez', time: "34'", isHomeTeam: false },
-    { id: '3', name: 'Jake Thompson', time: "45'", isHomeTeam: true },
-    { id: '4', name: 'R. Johnson', time: "67'", isHomeTeam: false },
-    { id: '5', name: 'Marcus Silva', time: "78'", isHomeTeam: true },
-  ];
+  // Fetch match data using TanStack Query + Axios
+  const { data, isLoading, error, refetch, isRefetching } = useCoachMatchDetail(matchId || '');
 
-  const homeTeamLineup: Player[] = [
-    { id: '1', name: 'Alex Rodriguez', position: 'GK', jerseyNumber: 1 },
-    { id: '2', name: 'Ryan Miller', position: 'DF', jerseyNumber: 2 },
-    { id: '3', name: 'Tom Wilson', position: 'DF', jerseyNumber: 5 },
-    { id: '4', name: 'Chris Brown', position: 'DF', jerseyNumber: 4 },
-    { id: '5', name: 'Sam Davis', position: 'DF', jerseyNumber: 3 },
-    { id: '6', name: 'Mike Johnson', position: 'MF', jerseyNumber: 6 },
-    { id: '7', name: 'Paul Martinez', position: 'MF', jerseyNumber: 8 },
-    { id: '8', name: 'David Chen', position: 'MF', jerseyNumber: 10 },
-    { id: '9', name: 'Marcus Silva', position: 'FW', jerseyNumber: 9 },
-    { id: '10', name: 'Jake Thompson', position: 'FW', jerseyNumber: 11 },
-    { id: '11', name: 'Kevin Lee', position: 'FW', jerseyNumber: 7 },
-  ];
-
-  const awayTeamLineup: Player[] = [
-    { id: '12', name: 'D. Martinez', position: 'GK', jerseyNumber: 1 },
-    { id: '13', name: 'R. Johnson', position: 'DF', jerseyNumber: 2 },
-    { id: '14', name: 'L. Garcia', position: 'DF', jerseyNumber: 3 },
-    { id: '15', name: 'K. White', position: 'DF', jerseyNumber: 4 },
-    { id: '16', name: 'P. Taylor', position: 'DF', jerseyNumber: 5 },
-    { id: '17', name: 'T. Anderson', position: 'MF', jerseyNumber: 6 },
-    { id: '18', name: 'J. Wilson', position: 'MF', jerseyNumber: 8 },
-    { id: '19', name: 'M. Harris', position: 'MF', jerseyNumber: 10 },
-    { id: '20', name: 'S. Brown', position: 'FW', jerseyNumber: 9 },
-    { id: '21', name: 'P. Thompson', position: 'FW', jerseyNumber: 11 },
-    { id: '22', name: 'A. Miller', position: 'FW', jerseyNumber: 7 },
-  ];
-
-  const getResultColor = () => {
-    switch (matchData.result) {
-      case 'Win':
+  // Helper to get result color
+  const getResultColor = (result: MatchResult) => {
+    switch (result) {
+      case 'W':
         return COLORS.success;
-      case 'Loss':
+      case 'L':
         return COLORS.error;
-      case 'Draw':
+      case 'D':
         return COLORS.textSecondary;
     }
   };
+
+  // Handle loading state
+  if (isLoading) {
+    return <Loading message="Loading match details..." />;
+  }
+
+  // Handle error or missing matchId
+  if (error || !data || !matchId) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color={COLORS.text} />
+            <Text style={styles.backText}>Back to Club</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={COLORS.error} />
+          <Text style={styles.errorText}>Failed to load match details</Text>
+          <Text style={styles.errorSubtext}>Please try again later</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Extract data from API response
+  const { match, teams, summary, statistics, lineup } = data;
 
   return (
     <View style={styles.container}>
@@ -176,39 +174,57 @@ const MatchDetailScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
+      >
         {/* Match Info Section */}
         <View style={styles.matchInfoSection}>
-          <Text style={styles.matchDate}>{matchData.date}</Text>
+          <Text style={styles.matchDate}>{formatDate(match.match_date)}</Text>
 
           {/* Teams and Score */}
           <View style={styles.teamsContainer}>
-            {/* Home Team */}
+            {/* Our Team (Home) */}
             <View style={styles.teamSection}>
-              <View style={[styles.teamLogo, { backgroundColor: COLORS.primary }]}>
-                <Text style={styles.teamLogoText}>{matchData.homeTeamLogo}</Text>
-              </View>
-              <Text style={styles.teamName}>{matchData.homeTeam}</Text>
+              {teams.our_club.logo_url ? (
+                <Image source={{ uri: teams.our_club.logo_url }} style={styles.teamLogoImage} />
+              ) : (
+                <View style={[styles.teamLogo, { backgroundColor: COLORS.primary }]}>
+                  <Text style={styles.teamLogoText}>{teams.our_club.club_name.charAt(0)}</Text>
+                </View>
+              )}
+              <Text style={styles.teamName}>{teams.our_club.club_name}</Text>
             </View>
 
             {/* Score */}
             <View style={styles.scoreSection}>
               <View style={styles.scoreContainer}>
-                <Text style={styles.scoreText}>{matchData.homeScore}</Text>
+                <Text style={styles.scoreText}>{match.our_score}</Text>
                 <Text style={styles.scoreDivider}>-</Text>
-                <Text style={styles.scoreText}>{matchData.awayScore}</Text>
+                <Text style={styles.scoreText}>{match.opponent_score}</Text>
               </View>
-              <View style={[styles.resultBadge, { backgroundColor: getResultColor() }]}>
-                <Text style={styles.resultText}>{matchData.result}</Text>
+              <View style={[styles.resultBadge, { backgroundColor: getResultColor(match.result) }]}>
+                <Text style={styles.resultText}>{getResultText(match.result)}</Text>
               </View>
             </View>
 
-            {/* Away Team */}
+            {/* Opponent Team (Away) */}
             <View style={styles.teamSection}>
-              <View style={[styles.teamLogo, { backgroundColor: COLORS.secondary }]}>
-                <Text style={styles.teamLogoText}>{matchData.awayTeamLogo}</Text>
-              </View>
-              <Text style={styles.teamName}>{matchData.awayTeam}</Text>
+              {teams.opponent.logo_url ? (
+                <Image source={{ uri: teams.opponent.logo_url }} style={styles.teamLogoImage} />
+              ) : (
+                <View style={[styles.teamLogo, { backgroundColor: COLORS.secondary }]}>
+                  <Text style={styles.teamLogoText}>{teams.opponent.opponent_name.charAt(0)}</Text>
+                </View>
+              )}
+              <Text style={styles.teamName}>{teams.opponent.opponent_name}</Text>
             </View>
           </View>
         </View>
@@ -247,22 +263,26 @@ const MatchDetailScreen: React.FC = () => {
             {/* Goal Scorers */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Goal Scorers</Text>
-              {goalScorers.map((scorer) => (
-                <View
-                  key={scorer.id}
-                  style={[
-                    styles.goalScorerCard,
-                    {
-                      backgroundColor: scorer.isHomeTeam
-                        ? 'rgba(52, 199, 89, 0.15)'
-                        : 'rgba(255, 48, 0, 0.15)',
-                    },
-                  ]}
-                >
-                  <Text style={styles.goalScorerName}>{scorer.name}</Text>
-                  <Text style={styles.goalScorerTime}>{scorer.time}</Text>
-                </View>
-              ))}
+              {summary.goal_scorers.length === 0 ? (
+                <Text style={styles.noDataText}>No goals scored</Text>
+              ) : (
+                summary.goal_scorers.map((scorer: GoalScorer) => (
+                  <View
+                    key={scorer.goal_id}
+                    style={[
+                      styles.goalScorerCard,
+                      {
+                        backgroundColor: scorer.is_our_goal
+                          ? 'rgba(52, 199, 89, 0.15)'
+                          : 'rgba(255, 48, 0, 0.15)',
+                      },
+                    ]}
+                  >
+                    <Text style={styles.goalScorerName}>{scorer.scorer_name}</Text>
+                    <Text style={styles.goalScorerTime}>{formatGoalTime(scorer.minute, scorer.second)}</Text>
+                  </View>
+                ))
+              )}
             </View>
           </View>
         )}
@@ -277,40 +297,40 @@ const MatchDetailScreen: React.FC = () => {
               <View style={styles.possessionContainer}>
                 <Text style={styles.possessionLabel}>Ball Possession</Text>
                 <View style={styles.possessionBar}>
-                  <View style={[styles.possessionFillHome, { width: '33%' }]}>
-                    <Text style={styles.possessionText}>33%</Text>
+                  <View style={[styles.possessionFillHome, { width: `${statistics.match_overview.ball_possession.our_team}%` }]}>
+                    <Text style={styles.possessionText}>{statistics.match_overview.ball_possession.our_team}%</Text>
                   </View>
-                  <View style={[styles.possessionFillAway, { width: '67%' }]}>
-                    <Text style={styles.possessionText}>67%</Text>
+                  <View style={[styles.possessionFillAway, { width: `${statistics.match_overview.ball_possession.opponent}%` }]}>
+                    <Text style={styles.possessionText}>{statistics.match_overview.ball_possession.opponent}%</Text>
                   </View>
                 </View>
               </View>
 
-              <StatBar label="Expected Goals (xG)" homeValue={2.4} awayValue={1.8} />
-              <StatBar label="Total Shots" homeValue={9} awayValue={11} />
-              <StatBar label="Goalkeeper Saves" homeValue={6} awayValue={4} />
-              <StatBar label="Total Dribbles" homeValue={8} awayValue={6} />
-              <StatBar label="Total Passes" homeValue={5} awayValue={5} />
+              <StatBar label="Expected Goals (xG)" homeValue={statistics.match_overview.expected_goals.our_team} awayValue={statistics.match_overview.expected_goals.opponent} />
+              <StatBar label="Total Shots" homeValue={statistics.match_overview.total_shots.our_team} awayValue={statistics.match_overview.total_shots.opponent} />
+              <StatBar label="Goalkeeper Saves" homeValue={statistics.match_overview.goalkeeper_saves.our_team} awayValue={statistics.match_overview.goalkeeper_saves.opponent} />
+              <StatBar label="Total Dribbles" homeValue={statistics.match_overview.total_dribbles.our_team} awayValue={statistics.match_overview.total_dribbles.opponent} />
+              <StatBar label="Total Passes" homeValue={statistics.match_overview.total_passes.our_team} awayValue={statistics.match_overview.total_passes.opponent} />
             </View>
 
             {/* Attacking */}
             <View style={styles.statsSection}>
               <Text style={styles.statsSectionTitle}>Attacking</Text>
-              <StatBar label="Total Shots" homeValue={9} awayValue={11} />
-              <StatBar label="Shots on Target" homeValue={6} awayValue={9} />
-              <StatBar label="Shots off Target" homeValue={3} awayValue={2} />
-              <StatBar label="Total Dribbles" homeValue={8} awayValue={6} />
-              <StatBar label="Successful Dribbles" homeValue={5} awayValue={4} />
+              <StatBar label="Total Shots" homeValue={statistics.attacking.total_shots.our_team} awayValue={statistics.attacking.total_shots.opponent} />
+              <StatBar label="Shots on Target" homeValue={statistics.attacking.shots_on_target.our_team} awayValue={statistics.attacking.shots_on_target.opponent} />
+              <StatBar label="Shots off Target" homeValue={statistics.attacking.shots_off_target.our_team} awayValue={statistics.attacking.shots_off_target.opponent} />
+              <StatBar label="Total Dribbles" homeValue={statistics.attacking.total_dribbles.our_team} awayValue={statistics.attacking.total_dribbles.opponent} />
+              <StatBar label="Successful Dribbles" homeValue={statistics.attacking.successful_dribbles.our_team} awayValue={statistics.attacking.successful_dribbles.opponent} />
             </View>
 
             {/* Passing */}
             <View style={styles.statsSection}>
               <Text style={styles.statsSectionTitle}>Passing</Text>
-              <StatBar label="Total Passes" homeValue={487} awayValue={412} />
-              <StatBar label="Passes Completed" homeValue={402} awayValue={326} />
-              <StatBar label="Passes in Final Third" homeValue={142} awayValue={98} />
-              <StatBar label="Long Passes" homeValue={8} awayValue={15} />
-              <StatBar label="Crosses" homeValue={17} awayValue={12} />
+              <StatBar label="Total Passes" homeValue={statistics.passing.total_passes.our_team} awayValue={statistics.passing.total_passes.opponent} />
+              <StatBar label="Passes Completed" homeValue={statistics.passing.passes_completed.our_team} awayValue={statistics.passing.passes_completed.opponent} />
+              <StatBar label="Passes in Final Third" homeValue={statistics.passing.passes_in_final_third.our_team} awayValue={statistics.passing.passes_in_final_third.opponent} />
+              <StatBar label="Long Passes" homeValue={statistics.passing.long_passes.our_team} awayValue={statistics.passing.long_passes.opponent} />
+              <StatBar label="Crosses" homeValue={statistics.passing.crosses.our_team} awayValue={statistics.passing.crosses.opponent} />
             </View>
 
             {/* Defending */}
@@ -319,36 +339,44 @@ const MatchDetailScreen: React.FC = () => {
 
               {/* Circular Progress for Success Rates */}
               <View style={styles.circularProgressRow}>
-                <CircularProgress percentage={71} label="Tackle Success %" />
-                <CircularProgress percentage={68.2} label="Opp Success %" />
+                <CircularProgress percentage={statistics.defending.tackle_success_percentage.our_team} label="Tackle Success %" />
+                <CircularProgress percentage={statistics.defending.tackle_success_percentage.opponent} label="Opp Success %" />
               </View>
 
-              <StatBar label="Total Tackles" homeValue={18} awayValue={22} />
-              <StatBar label="Interceptions" homeValue={12} awayValue={8} />
-              <StatBar label="Ball Recoveries" homeValue={8} awayValue={6} />
-              <StatBar label="Goalkeeper Saves" homeValue={6} awayValue={4} />
+              <StatBar label="Total Tackles" homeValue={statistics.defending.total_tackles.our_team} awayValue={statistics.defending.total_tackles.opponent} />
+              <StatBar label="Interceptions" homeValue={statistics.defending.interceptions.our_team} awayValue={statistics.defending.interceptions.opponent} />
+              <StatBar label="Ball Recoveries" homeValue={statistics.defending.ball_recoveries.our_team} awayValue={statistics.defending.ball_recoveries.opponent} />
+              <StatBar label="Goalkeeper Saves" homeValue={statistics.defending.goalkeeper_saves.our_team} awayValue={statistics.defending.goalkeeper_saves.opponent} />
             </View>
           </View>
         )}
 
         {activeTab === 'lineup' && (
           <View style={styles.tabContent}>
-            {/* Home Team Lineup */}
+            {/* Our Team Lineup */}
             <View style={styles.lineupSection}>
-              <Text style={styles.lineupTeamName}>{matchData.homeTeam}</Text>
+              <Text style={styles.lineupTeamName}>{teams.our_club.club_name}</Text>
               <Text style={styles.lineupSubtitle}>Starting XI</Text>
-              {homeTeamLineup.map((player) => (
-                <PlayerListItem key={player.id} player={player} isHomeTeam={true} />
-              ))}
+              {lineup.our_team.length === 0 ? (
+                <Text style={styles.noDataText}>No lineup available</Text>
+              ) : (
+                lineup.our_team.map((player: OurTeamPlayer) => (
+                  <PlayerListItem key={player.player_id} player={player} isHomeTeam={true} />
+                ))
+              )}
             </View>
 
-            {/* Away Team Lineup */}
+            {/* Opponent Team Lineup */}
             <View style={styles.lineupSection}>
-              <Text style={styles.lineupTeamName}>{matchData.awayTeam}</Text>
+              <Text style={styles.lineupTeamName}>{teams.opponent.opponent_name}</Text>
               <Text style={styles.lineupSubtitle}>Starting XI</Text>
-              {awayTeamLineup.map((player) => (
-                <PlayerListItem key={player.id} player={player} isHomeTeam={false} />
-              ))}
+              {lineup.opponent_team.length === 0 ? (
+                <Text style={styles.noDataText}>No lineup available</Text>
+              ) : (
+                lineup.opponent_team.map((player: OpponentPlayer) => (
+                  <PlayerListItem key={player.opponent_player_id} player={player} isHomeTeam={false} />
+                ))
+              )}
             </View>
           </View>
         )}
@@ -380,6 +408,26 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginLeft: 4,
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    fontFamily: 'FranklinGothic-Demi',
+    color: COLORS.text,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  errorSubtext: {
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.textSecondary,
+    marginTop: 8,
+    textAlign: 'center',
+  },
   scrollContent: {
     flex: 1,
   },
@@ -409,6 +457,12 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 8,
+  },
+  teamLogoImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     marginBottom: 8,
   },
   teamLogoText: {
@@ -488,6 +542,13 @@ const styles = StyleSheet.create({
     fontFamily: 'FranklinGothic-Heavy',
     color: COLORS.text,
     marginBottom: 16,
+  },
+  noDataText: {
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    paddingVertical: 16,
   },
   goalScorerCard: {
     flexDirection: 'row',

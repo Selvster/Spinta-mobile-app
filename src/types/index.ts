@@ -5,3 +5,4 @@ export * from './match.types';
 export * from './training.types';
 export * from './coach.types';
 export * from './player.types';
+export * from './chat.types';

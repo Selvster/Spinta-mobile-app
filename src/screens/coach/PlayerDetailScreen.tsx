@@ -8,6 +8,8 @@ import { COLORS } from '../../constants';
 import { COACH_ROUTES } from '../../constants/routes';
 import { AttributeRadar, Attribute } from '../../components/coach';
 import { useCoachPlayerDetail } from '../../api/queries/coach.queries';
+import { useGenerateAIPlan } from '../../api/mutations/coach.mutations';
+import { AIGeneratedPlanResponse } from '../../types';
 
 type TabType = 'summary' | 'matches' | 'training';
 
@@ -17,7 +19,7 @@ type PlayerDetailRouteParams = {
 
 type CoachStackParamList = {
   [COACH_ROUTES.TRAINING_PLAN_DETAIL]: { planId: string };
-  [COACH_ROUTES.CREATE_TRAINING_PLAN]: { playerId: string };
+  [COACH_ROUTES.CREATE_TRAINING_PLAN]: { playerId: string; aiGeneratedPlan: AIGeneratedPlanResponse };
   [COACH_ROUTES.PLAYER_MATCH_DETAIL]: { playerId: string; matchId: string };
 };
 
@@ -44,6 +46,9 @@ const PlayerDetailScreen: React.FC = () => {
   // Get playerId from route params
   const playerId = route.params?.playerId;
   const { data, isLoading, error } = useCoachPlayerDetail(playerId || '');
+
+  // AI plan generation mutation
+  const generateAIPlan = useGenerateAIPlan();
 
   if (isLoading) {
     return (
@@ -171,22 +176,34 @@ const PlayerDetailScreen: React.FC = () => {
     setCurrentMessageIndex(0);
     startSpinAnimation();
 
-    // Rotate through messages
+    // Rotate through messages while API is called
     let messageIndex = 0;
     const messageInterval = setInterval(() => {
-      messageIndex++;
-      if (messageIndex < AI_LOADING_MESSAGES.length) {
-        setCurrentMessageIndex(messageIndex);
-      }
-    }, 1250); // Change message every 1.25 seconds (5 seconds / 4 messages)
+      messageIndex = (messageIndex + 1) % AI_LOADING_MESSAGES.length;
+      setCurrentMessageIndex(messageIndex);
+    }, 1250);
 
-    // After 5 seconds, navigate to CreateTrainingPlanScreen
-    setTimeout(() => {
-      clearInterval(messageInterval);
-      setShowAILoading(false);
-      setCurrentMessageIndex(0);
-      navigation.navigate(COACH_ROUTES.CREATE_TRAINING_PLAN, { playerId: player.player_id });
-    }, 5000);
+    // Call the AI plan generation API
+    generateAIPlan.mutate(
+      { player_id: player.player_id },
+      {
+        onSuccess: (aiPlan) => {
+          clearInterval(messageInterval);
+          setShowAILoading(false);
+          setCurrentMessageIndex(0);
+          navigation.navigate(COACH_ROUTES.CREATE_TRAINING_PLAN, {
+            playerId: player.player_id,
+            aiGeneratedPlan: aiPlan,
+          });
+        },
+        onError: () => {
+          clearInterval(messageInterval);
+          setShowAILoading(false);
+          setCurrentMessageIndex(0);
+          Alert.alert('Error', 'Failed to generate training plan. Please try again.');
+        },
+      }
+    );
   };
 
   // Helper to format match result from API result code

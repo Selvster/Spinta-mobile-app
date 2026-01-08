@@ -1,15 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '../client';
-import { ENDPOINTS } from '../endpoints';
-import { User } from '../../types';
+// Auth queries - user data is stored in auth store, no need for separate query
+// This file is kept for backward compatibility but queries are not needed
+// since JWT auth stores user data locally
 
-export const useCurrentUser = () => {
-  return useQuery({
-    queryKey: ['currentUser'],
-    queryFn: async () => {
-      const { data } = await apiClient.get<User>(ENDPOINTS.AUTH.ME);
-      return data;
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-};
+export {};

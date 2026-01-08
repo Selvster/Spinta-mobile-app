@@ -10,7 +10,7 @@ const CoachHomeScreen: React.FC = () => {
     <View style={styles.container}>
       <Text style={styles.title}>Coach Dashboard</Text>
       <Text style={styles.subtitle}>
-        Welcome, Coach {user?.firstName}!
+        Welcome, Coach {user?.full_name}!
       </Text>
     </View>
   );

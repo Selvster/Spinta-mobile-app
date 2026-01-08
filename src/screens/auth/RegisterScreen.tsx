@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { RoleSelector } from '../../components/auth/RoleSelector';
 import { CoachRegistrationForm } from '../../components/auth/CoachRegistrationForm';
 import { PlayerRegistrationForm } from '../../components/auth/PlayerRegistrationForm';
-import { RegistrationForm } from '../../components/auth/RegistrationForm';
 import { UserRole } from '../../types';
 import { AUTH_ROUTES, COLORS } from '../../constants';
 
@@ -29,6 +28,12 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     } else {
       navigation.goBack();
     }
+  };
+
+  const handleRegistrationSuccess = () => {
+    // After successful registration, the auth store is updated
+    // and the RootNavigator will automatically redirect to the main app
+    // No need to navigate manually
   };
 
   return (
@@ -61,48 +66,13 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
           />
         ) : selectedRole === UserRole.COACH ? (
           <CoachRegistrationForm
-            onRegisterSuccess={(data) => {
-              // Navigate to success screen with coach data
-              navigation.navigate(AUTH_ROUTES.REGISTRATION_SUCCESS, {
-                name: data.fullName || 'Coach',
-                role: UserRole.COACH,
-                clubName: data.clubName || 'Football Club',
-                teamLevel: data.ageGroup || 'U16',
-              });
-            }}
+            onRegisterSuccess={handleRegistrationSuccess}
           />
         ) : selectedRole === UserRole.PLAYER ? (
           <PlayerRegistrationForm
-            onRegisterSuccess={(data) => {
-              // Navigate to success screen with player data
-              // Calculate age from dateOfBirth if available
-              const age = data.dateOfBirth ?
-                new Date().getFullYear() - new Date(data.dateOfBirth).getFullYear() :
-                18;
-
-              navigation.navigate(AUTH_ROUTES.REGISTRATION_SUCCESS, {
-                name: data.playerName || 'Player',
-                role: UserRole.PLAYER,
-                clubName: 'FC Barcelona Youth', // From prefilled data
-                jerseyNumber: '10', // From prefilled data
-                position: 'Forward', // From prefilled data
-                age,
-              });
-            }}
+            onRegisterSuccess={handleRegistrationSuccess}
           />
-        ) : (
-          <RegistrationForm
-            role={selectedRole!}
-            onRegisterSuccess={(data) => {
-              // Generic registration success
-              navigation.navigate(AUTH_ROUTES.REGISTRATION_SUCCESS, {
-                name: `${data.firstName} ${data.lastName}`,
-                role: selectedRole!,
-                clubName: 'Football Club',
-              });
-            }}
-          />
-        )}
+        ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
   );

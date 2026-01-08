@@ -1,40 +1,34 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS } from '../../constants';
 import { PLAYER_ROUTES } from '../../constants/routes';
+import { usePlayerTraining } from '../../api/queries/player.queries';
 
-interface TrainingPlan {
-  id: string;
-  title: string;
-  date: string;
-  status: 'Completed' | 'In Progress' | 'Not Started';
-}
+type PlayerStackParamList = {
+  [PLAYER_ROUTES.TRAINING_PLAN_DETAIL]: { planId: string };
+};
 
 const PlayerTrainingScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<PlayerStackParamList>>();
+  const { data, isLoading, error } = usePlayerTraining();
 
-  const trainingPlans: TrainingPlan[] = [
-    {
-      id: '1',
-      title: 'Speed & Agility Development',
-      date: 'Oct 7, 2025',
-      status: 'Completed',
-    },
-    {
-      id: '2',
-      title: 'Shooting Accuracy Program',
-      date: 'Oct 14, 2025',
-      status: 'In Progress',
-    },
-    {
-      id: '3',
-      title: 'Defensive Positioning',
-      date: 'Oct 21, 2025',
-      status: 'Not Started',
-    },
-  ];
+  // Helper to map training plan status
+  const mapPlanStatus = (status: string): 'Completed' | 'In Progress' | 'Not Started' => {
+    switch (status) {
+      case 'completed': return 'Completed';
+      case 'in_progress': return 'In Progress';
+      default: return 'Not Started';
+    }
+  };
+
+  // Helper to format date
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
   const getStatusColor = (status: 'Completed' | 'In Progress' | 'Not Started') => {
     switch (status) {
@@ -46,6 +40,26 @@ const PlayerTrainingScreen: React.FC = () => {
         return COLORS.textSecondary;
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading training plans...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Ionicons name="alert-circle-outline" size={48} color={COLORS.error} />
+        <Text style={styles.errorText}>Failed to load training plans</Text>
+      </View>
+    );
+  }
+
+  const trainingPlans = data?.training_plans || [];
 
   return (
     <View style={styles.container}>
@@ -62,30 +76,33 @@ const PlayerTrainingScreen: React.FC = () => {
           </View>
         ) : (
           <View style={styles.trainingPlansList}>
-            {trainingPlans.map((plan) => (
-              <TouchableOpacity
-                key={plan.id}
-                style={styles.trainingPlanCard}
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate(PLAYER_ROUTES.TRAINING_PLAN_DETAIL as never, { plan } as never)}
-              >
-                <View style={styles.trainingPlanContent}>
-                  <Text style={styles.trainingPlanTitle}>{plan.title}</Text>
-                  <Text style={styles.trainingPlanDate}>{plan.date}</Text>
-                </View>
-                <View style={styles.trainingPlanRight}>
-                  <View
-                    style={[
-                      styles.trainingStatusBadge,
-                      { backgroundColor: getStatusColor(plan.status) },
-                    ]}
-                  >
-                    <Text style={styles.trainingStatusText}>{plan.status}</Text>
+            {trainingPlans.map((plan) => {
+              const status = mapPlanStatus(plan.status);
+              return (
+                <TouchableOpacity
+                  key={plan.plan_id}
+                  style={styles.trainingPlanCard}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate(PLAYER_ROUTES.TRAINING_PLAN_DETAIL, { planId: plan.plan_id })}
+                >
+                  <View style={styles.trainingPlanContent}>
+                    <Text style={styles.trainingPlanTitle}>{plan.plan_name}</Text>
+                    <Text style={styles.trainingPlanDate}>{formatDate(plan.created_at)}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-                </View>
-              </TouchableOpacity>
-            ))}
+                  <View style={styles.trainingPlanRight}>
+                    <View
+                      style={[
+                        styles.trainingStatusBadge,
+                        { backgroundColor: getStatusColor(status) },
+                      ]}
+                    >
+                      <Text style={styles.trainingStatusText}>{status}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -98,6 +115,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
     paddingTop: 45,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.textSecondary,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.error,
   },
   scrollContent: {
     flex: 1,

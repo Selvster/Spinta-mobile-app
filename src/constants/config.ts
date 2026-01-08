@@ -1,12 +1,12 @@
 const ENV = {
   dev: {
-    API_BASE_URL: 'http://localhost:3000/api',
+    API_BASE_URL: 'https://spinta-backend.vercel.app/api',
   },
   staging: {
-    API_BASE_URL: 'https://staging-api.spinta.com/api',
+    API_BASE_URL: 'https://spinta-backend.vercel.app/api',
   },
   prod: {
-    API_BASE_URL: 'https://api.spinta.com/api',
+    API_BASE_URL: 'https://spinta-backend.vercel.app/api',
   },
 };
 

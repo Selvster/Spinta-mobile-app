@@ -2,14 +2,14 @@ import { useAuthStore } from '../stores/authStore';
 import { UserRole } from '../types';
 
 export const useAuth = () => {
-  const { user, tokens, isAuthenticated, isLoading, logout, setLoading } = useAuthStore();
+  const { user, token, isAuthenticated, isLoading, logout, setLoading } = useAuthStore();
 
-  const isPlayer = user?.role === UserRole.PLAYER;
-  const isCoach = user?.role === UserRole.COACH;
+  const isPlayer = user?.user_type === UserRole.PLAYER;
+  const isCoach = user?.user_type === UserRole.COACH;
 
   return {
     user,
-    tokens,
+    token,
     isAuthenticated,
     isLoading,
     isPlayer,

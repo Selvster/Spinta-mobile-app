@@ -30,7 +30,7 @@ export const RootNavigator = () => {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!isAuthenticated ? (
           <Stack.Screen name="Auth" component={AuthNavigator} />
-        ) : user?.role === UserRole.PLAYER ? (
+        ) : user?.user_type === UserRole.PLAYER ? (
           <Stack.Screen name="PlayerApp" component={PlayerNavigator} />
         ) : (
           <Stack.Screen name="CoachApp" component={CoachNavigator} />

@@ -1,36 +1,39 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS } from '../../constants';
 import { COACH_ROUTES } from '../../constants/routes';
+import { useCoachPlayers } from '../../api/queries/coach.queries';
 
-interface Player {
-  id: string;
-  name: string;
-  jerseyNumber: number;
-  status: 'Active' | 'Pending Invitation';
-  code?: string;
-  height?: string;
-  age?: number;
-  position?: string;
-}
+type CoachStackParamList = {
+  [COACH_ROUTES.PLAYER_DETAIL]: { playerId: string };
+};
 
 const PlayersScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<CoachStackParamList>>();
+  const { data, isLoading, error } = useCoachPlayers();
 
-  // Mock data - replace with real data later
-  const totalPlayers = 5;
-  const joinedPlayers = 3;
-  const pendingPlayers = 2;
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading players...</Text>
+      </View>
+    );
+  }
 
-  const players: Player[] = [
-    { id: '1', name: 'Marcus Silva', jerseyNumber: 10, status: 'Active', height: "5'11\"", age: 23, position: 'Forward' },
-    { id: '2', name: 'Jake Thompson', jerseyNumber: 7, status: 'Active', height: "5'9\"", age: 21, position: 'Midfielder' },
-    { id: '3', name: 'Player #23', jerseyNumber: 23, status: 'Pending Invitation', code: 'SP23TH003' },
-    { id: '4', name: 'David Chen', jerseyNumber: 15, status: 'Active', height: "6'0\"", age: 22, position: 'Defender' },
-    { id: '5', name: 'Player #9', jerseyNumber: 9, status: 'Pending Invitation', code: 'SP09TH005' },
-  ];
+  if (error) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Ionicons name="alert-circle-outline" size={48} color={COLORS.error} />
+        <Text style={styles.errorText}>Failed to load players</Text>
+      </View>
+    );
+  }
+
+  const { summary, players } = data || { summary: { total_players: 0, joined: 0, pending: 0 }, players: [] };
 
   return (
     <ScrollView style={styles.container}>
@@ -41,21 +44,21 @@ const PlayersScreen: React.FC = () => {
       <View style={styles.summaryCard}>
         <View style={styles.summaryItem}>
           <Text style={[styles.summaryNumber, { color: COLORS.primary }]}>
-            {totalPlayers}
+            {summary.total_players}
           </Text>
           <Text style={styles.summaryLabel}>Total Players</Text>
         </View>
         <View style={styles.summaryDivider} />
         <View style={styles.summaryItem}>
           <Text style={[styles.summaryNumber, { color: COLORS.success }]}>
-            {joinedPlayers}
+            {summary.joined}
           </Text>
           <Text style={styles.summaryLabel}>Joined</Text>
         </View>
         <View style={styles.summaryDivider} />
         <View style={styles.summaryItem}>
           <Text style={[styles.summaryNumber, { color: COLORS.warning }]}>
-            {pendingPlayers}
+            {summary.pending}
           </Text>
           <Text style={styles.summaryLabel}>Pending</Text>
         </View>
@@ -65,15 +68,15 @@ const PlayersScreen: React.FC = () => {
       <View style={styles.playersList}>
         {players.map((player) => (
           <TouchableOpacity
-            key={player.id}
+            key={player.player_id}
             style={styles.playerCard}
-            onPress={() => navigation.navigate(COACH_ROUTES.PLAYER_DETAIL as never, { player } as never)}
+            onPress={() => navigation.navigate(COACH_ROUTES.PLAYER_DETAIL, { playerId: player.player_id })}
             activeOpacity={0.7}
           >
             <View style={styles.playerAvatar}>
-              {player.status === 'Active' ? (
+              {player.is_linked ? (
                 <View style={[styles.avatarPlaceholder, { backgroundColor: COLORS.primary }]}>
-                  <Text style={styles.avatarText}>{player.jerseyNumber}</Text>
+                  <Text style={styles.avatarText}>{player.jersey_number}</Text>
                 </View>
               ) : (
                 <View style={styles.avatarPlaceholder}>
@@ -82,9 +85,9 @@ const PlayersScreen: React.FC = () => {
               )}
             </View>
             <View style={styles.playerInfo}>
-              <Text style={styles.playerName}>{player.name}</Text>
-              {player.status === 'Active' ? (
-                <Text style={styles.playerNumber}>#{player.jerseyNumber} • {player.position}</Text>
+              <Text style={styles.playerName}>{player.player_name}</Text>
+              {player.is_linked ? (
+                <Text style={styles.playerNumber}>#{player.jersey_number}</Text>
               ) : (
                 <Text style={styles.pendingText}>Pending Invitation</Text>
               )}
@@ -103,6 +106,22 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     padding: 20,
     paddingTop: 45,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.textSecondary,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.error,
   },
   title: {
     fontSize: 24,

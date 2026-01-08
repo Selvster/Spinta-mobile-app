@@ -1,70 +1,34 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { COLORS } from '../../constants';
 import { PLAYER_ROUTES } from '../../constants/routes';
+import { usePlayerMatches } from '../../api/queries/player.queries';
 
-interface MatchHistoryItem {
-  id: string;
-  date: string;
-  homeTeam: string;
-  awayTeam: string;
-  homeScore: number;
-  awayScore: number;
-  result: 'Win' | 'Draw' | 'Loss';
-}
+type PlayerStackParamList = {
+  [PLAYER_ROUTES.MATCH_DETAIL]: { matchId: string };
+};
 
 const PlayerMatchesScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<PlayerStackParamList>>();
+  const { data, isLoading, error } = usePlayerMatches();
 
-  const matchHistory: MatchHistoryItem[] = [
-    {
-      id: '1',
-      date: 'Oct 8, 2025',
-      homeTeam: 'Thunder United FC',
-      awayTeam: 'City Strikers',
-      homeScore: 3,
-      awayScore: 2,
-      result: 'Win',
-    },
-    {
-      id: '2',
-      date: 'Oct 5, 2025',
-      homeTeam: 'Thunder United FC',
-      awayTeam: 'Eagles FC',
-      homeScore: 1,
-      awayScore: 1,
-      result: 'Draw',
-    },
-    {
-      id: '3',
-      date: 'Oct 1, 2025',
-      homeTeam: 'Thunder United FC',
-      awayTeam: 'Valley Rangers',
-      homeScore: 2,
-      awayScore: 0,
-      result: 'Win',
-    },
-    {
-      id: '4',
-      date: 'Sep 28, 2025',
-      homeTeam: 'Thunder United FC',
-      awayTeam: 'Harbor United',
-      homeScore: 1,
-      awayScore: 3,
-      result: 'Loss',
-    },
-    {
-      id: '5',
-      date: 'Sep 24, 2025',
-      homeTeam: 'Thunder United FC',
-      awayTeam: 'Phoenix FC',
-      homeScore: 4,
-      awayScore: 1,
-      result: 'Win',
-    },
-  ];
+  // Helper to format match result from API result code
+  const getMatchResult = (result: 'W' | 'D' | 'L'): 'Win' | 'Draw' | 'Loss' => {
+    switch (result) {
+      case 'W': return 'Win';
+      case 'L': return 'Loss';
+      case 'D': return 'Draw';
+    }
+  };
+
+  // Helper to format date
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
   const getResultColor = (result: 'Win' | 'Draw' | 'Loss') => {
     switch (result) {
@@ -88,48 +52,78 @@ const PlayerMatchesScreen: React.FC = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading matches...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Ionicons name="alert-circle-outline" size={48} color={COLORS.error} />
+        <Text style={styles.errorText}>Failed to load matches</Text>
+      </View>
+    );
+  }
+
+  const matches = data?.matches || [];
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Match History</Text>
 
-        <View style={styles.matchHistoryList}>
-          {matchHistory.map((match) => (
-            <TouchableOpacity
-              key={match.id}
-              style={[
-                styles.matchHistoryCard,
-                { backgroundColor: getResultBackgroundColor(match.result) },
-              ]}
-              onPress={() => navigation.navigate(PLAYER_ROUTES.MATCH_DETAIL as never)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.matchHistoryContent}>
-                <Text style={styles.matchHistoryDate}>{match.date}</Text>
-                <Text style={styles.matchHistoryTitle} numberOfLines={1}>
-                  {match.homeTeam} {match.homeScore} - {match.awayScore} {match.awayTeam}
-                </Text>
-                <View style={styles.matchHistoryResult}>
-                  <View
-                    style={[
-                      styles.matchResultDot,
-                      { backgroundColor: getResultColor(match.result) },
-                    ]}
-                  />
-                  <Text
-                    style={[
-                      styles.matchResultText,
-                      { color: getResultColor(match.result) },
-                    ]}
-                  >
-                    {match.result}
-                  </Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-            </TouchableOpacity>
-          ))}
-        </View>
+        {matches.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="football-outline" size={48} color={COLORS.textSecondary} />
+            <Text style={styles.emptyStateText}>No matches yet</Text>
+          </View>
+        ) : (
+          <View style={styles.matchHistoryList}>
+            {matches.map((match) => {
+              const result = getMatchResult(match.result);
+              return (
+                <TouchableOpacity
+                  key={match.match_id}
+                  style={[
+                    styles.matchHistoryCard,
+                    { backgroundColor: getResultBackgroundColor(result) },
+                  ]}
+                  onPress={() => navigation.navigate(PLAYER_ROUTES.MATCH_DETAIL, { matchId: match.match_id })}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.matchHistoryContent}>
+                    <Text style={styles.matchHistoryDate}>{formatDate(match.match_date)}</Text>
+                    <Text style={styles.matchHistoryTitle} numberOfLines={1}>
+                      vs {match.opponent_name} ({match.our_score} - {match.opponent_score})
+                    </Text>
+                    <View style={styles.matchHistoryResult}>
+                      <View
+                        style={[
+                          styles.matchResultDot,
+                          { backgroundColor: getResultColor(result) },
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          styles.matchResultText,
+                          { color: getResultColor(result) },
+                        ]}
+                      >
+                        {result}
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -140,6 +134,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
     paddingTop: 45,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.textSecondary,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.error,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontFamily: 'FranklinGothic-Demi',
+    color: COLORS.text,
+    marginTop: 16,
   },
   scrollContent: {
     flex: 1,

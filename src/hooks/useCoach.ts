@@ -3,14 +3,10 @@ import { UserRole } from '../types';
 
 export const useCoach = () => {
   const { user } = useAuth();
-  const isCoach = user?.role === UserRole.COACH;
-
-  // Add coach-specific queries here later
-  // const teams = useCoachTeams(isCoach ? user.id : '');
+  const isCoach = user?.user_type === UserRole.COACH;
 
   return {
     isCoach,
     coach: isCoach ? user : null,
-    // teams,
   };
 };

@@ -1,20 +1,20 @@
 import { useMemo } from 'react';
 import { useAuth } from './useAuth';
-import { UserRole, Player, Coach } from '../types';
+import { UserRole, ApiUser } from '../types';
 
 export const useRole = () => {
   const { user, isPlayer, isCoach } = useAuth();
 
   const playerData = useMemo(() => {
-    return isPlayer ? (user as Player) : null;
+    return isPlayer ? user : null;
   }, [user, isPlayer]);
 
   const coachData = useMemo(() => {
-    return isCoach ? (user as Coach) : null;
+    return isCoach ? user : null;
   }, [user, isCoach]);
 
   return {
-    role: user?.role,
+    role: user?.user_type,
     isPlayer,
     isCoach,
     playerData,

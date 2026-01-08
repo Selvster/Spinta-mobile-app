@@ -1,29 +1,49 @@
+// User types matching backend API responses
+
 export enum UserRole {
-  PLAYER = 'PLAYER',
-  COACH = 'COACH',
+  PLAYER = 'player',
+  COACH = 'coach',
 }
 
-export interface BaseUser {
-  id: string;
+// Base user from login/registration responses
+export interface ApiUser {
+  user_id: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  role: UserRole;
-  createdAt: string;
-  updatedAt: string;
+  user_type: UserRole;
+  full_name: string;
 }
 
-export interface Player extends BaseUser {
-  role: UserRole.PLAYER;
-  position?: string;
-  teamId?: string;
-  coachId?: string;
+// Extended user for coach registration response
+export interface CoachUser extends ApiUser {
+  user_type: UserRole.COACH;
+  club: ClubBasic;
 }
 
-export interface Coach extends BaseUser {
-  role: UserRole.COACH;
-  teamIds: string[];
-  certification?: string;
+// Extended user for player registration response
+export interface PlayerUser extends ApiUser {
+  user_type: UserRole.PLAYER;
+  jersey_number: number;
+  position: string;
+  birth_date: string;
+  profile_image_url: string | null;
+  club: ClubBasic;
 }
 
-export type User = Player | Coach;
+// Basic club info returned in auth responses
+export interface ClubBasic {
+  club_id: string;
+  club_name: string;
+  logo_url: string | null;
+  age_group?: string;
+  stadium?: string;
+}
+
+// For local storage / auth store
+export interface StoredUser {
+  user_id: string;
+  email: string;
+  user_type: UserRole;
+  full_name: string;
+}
+
+export type User = ApiUser | CoachUser | PlayerUser;

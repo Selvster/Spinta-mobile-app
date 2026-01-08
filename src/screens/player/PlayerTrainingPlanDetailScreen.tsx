@@ -1,93 +1,73 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { COLORS } from '../../constants';
-
-interface Exercise {
-  id: string;
-  name: string;
-  description: string;
-  sets: string;
-  reps: string;
-  minutes: string;
-  completed: boolean;
-}
-
-interface TrainingPlanData {
-  id: string;
-  title: string;
-  date: string;
-}
+import { usePlayerTrainingDetail } from '../../api/queries/player.queries';
+import { useToggleExercise } from '../../api/mutations/player.mutations';
 
 type TrainingPlanDetailRouteParams = {
-  plan?: TrainingPlanData;
+  TrainingPlanDetail: { planId: string };
 };
 
 const PlayerTrainingPlanDetailScreen: React.FC = () => {
   const navigation = useNavigation();
-  const route = useRoute<RouteProp<{ params: TrainingPlanDetailRouteParams }, 'params'>>();
+  const route = useRoute<RouteProp<TrainingPlanDetailRouteParams, 'TrainingPlanDetail'>>();
+  const planId = route.params?.planId;
 
-  const planFromParams = route.params?.plan;
+  const { data, isLoading, error } = usePlayerTrainingDetail(planId || '');
+  const toggleExerciseMutation = useToggleExercise();
 
-  // Mock exercises data with state for toggling completion
-  const [exercises, setExercises] = useState<Exercise[]>([
-    {
-      id: '1',
-      name: 'Target Shooting Drill',
-      description: 'Practice shooting at designated target zones in the goal from various positions',
-      sets: '3',
-      reps: '10',
-      minutes: '20',
-      completed: true,
-    },
-    {
-      id: '2',
-      name: 'First Touch & Finish',
-      description: 'Receive passes and shoot on goal with maximum 2 touches',
-      sets: '4',
-      reps: '8',
-      minutes: '15',
-      completed: true,
-    },
-    {
-      id: '3',
-      name: 'Power Shot Training',
-      description: 'Work on generating shot power while maintaining accuracy',
-      sets: '3',
-      reps: '12',
-      minutes: '18',
-      completed: false,
-    },
-  ]);
+  // Helper to format date
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
 
-  const planTitle = planFromParams?.title || 'Shooting Accuracy Program';
-  const planDate = planFromParams?.date || 'Oct 14, 2025';
-
-  // Calculate progress
-  const completedCount = exercises.filter((ex) => ex.completed).length;
-  const totalCount = exercises.length;
-  const progressPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-
-  const getProgressColor = () => {
-    if (progressPercentage === 100) return COLORS.success;
-    if (progressPercentage >= 50) return COLORS.warning;
+  const getProgressColor = (percentage: number) => {
+    if (percentage === 100) return COLORS.success;
+    if (percentage >= 50) return COLORS.warning;
     return COLORS.primary;
   };
 
-  const toggleExerciseCompletion = (exerciseId: string) => {
-    setExercises(prevExercises =>
-      prevExercises.map(ex =>
-        ex.id === exerciseId ? { ...ex, completed: !ex.completed } : ex
-      )
-    );
+  const handleToggleExercise = (exerciseId: string, currentCompleted: boolean) => {
+    toggleExerciseMutation.mutate({
+      exerciseId,
+      completed: !currentCompleted,
+    });
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading training plan...</Text>
+      </View>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Ionicons name="alert-circle-outline" size={48} color={COLORS.error} />
+        <Text style={styles.errorText}>Failed to load training plan</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonError}>
+          <Text style={styles.backButtonErrorText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const { plan, progress, exercises, coach_notes } = data;
+
+  const progressColor = getProgressColor(progress.percentage);
 
   return (
     <View style={styles.container}>
@@ -102,16 +82,16 @@ const PlayerTrainingPlanDetailScreen: React.FC = () => {
       <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Plan Info Section */}
         <View style={styles.planInfoSection}>
-          <Text style={styles.planTitle}>{planTitle}</Text>
-          <Text style={styles.planMeta}>{planDate}</Text>
+          <Text style={styles.planTitle}>{plan.plan_name}</Text>
+          <Text style={styles.planMeta}>{formatDate(plan.created_at)}</Text>
         </View>
 
         {/* Progress Section */}
         <View style={styles.progressSection}>
           <View style={styles.progressHeader}>
             <Text style={styles.progressTitle}>Your Progress</Text>
-            <Text style={[styles.progressPercentage, { color: getProgressColor() }]}>
-              {progressPercentage}%
+            <Text style={[styles.progressPercentage, { color: progressColor }]}>
+              {progress.percentage}%
             </Text>
           </View>
 
@@ -121,15 +101,15 @@ const PlayerTrainingPlanDetailScreen: React.FC = () => {
               style={[
                 styles.progressBarFill,
                 {
-                  width: `${progressPercentage}%`,
-                  backgroundColor: getProgressColor(),
+                  width: `${progress.percentage}%`,
+                  backgroundColor: progressColor,
                 },
               ]}
             />
           </View>
 
           <Text style={styles.progressText}>
-            {completedCount} of {totalCount} exercises completed
+            {progress.completed_exercises} of {progress.total_exercises} exercises completed
           </Text>
         </View>
 
@@ -138,14 +118,16 @@ const PlayerTrainingPlanDetailScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>Exercises</Text>
 
           {exercises.map((exercise, index) => (
-            <View key={exercise.id} style={styles.exerciseCard}>
+            <View key={exercise.exercise_id} style={styles.exerciseCard}>
               <View style={styles.exerciseHeader}>
                 <View style={styles.exerciseNumber}>
                   <Text style={styles.exerciseNumberText}>{index + 1}</Text>
                 </View>
                 <View style={styles.exerciseInfo}>
-                  <Text style={styles.exerciseName}>{exercise.name}</Text>
-                  <Text style={styles.exerciseDescription}>{exercise.description}</Text>
+                  <Text style={styles.exerciseName}>{exercise.exercise_name}</Text>
+                  {exercise.description && (
+                    <Text style={styles.exerciseDescription}>{exercise.description}</Text>
+                  )}
                 </View>
                 {/* Toggleable checkbox */}
                 <TouchableOpacity
@@ -153,8 +135,9 @@ const PlayerTrainingPlanDetailScreen: React.FC = () => {
                     styles.checkbox,
                     exercise.completed && styles.checkboxCompleted,
                   ]}
-                  onPress={() => toggleExerciseCompletion(exercise.id)}
+                  onPress={() => handleToggleExercise(exercise.exercise_id, exercise.completed)}
                   activeOpacity={0.7}
+                  disabled={toggleExerciseMutation.isPending}
                 >
                   {exercise.completed && (
                     <Ionicons name="checkmark" size={16} color={COLORS.textOnPrimary} />
@@ -165,17 +148,17 @@ const PlayerTrainingPlanDetailScreen: React.FC = () => {
               <View style={styles.exerciseStats}>
                 <View style={styles.statItem}>
                   <Text style={styles.statLabel}>Sets</Text>
-                  <Text style={styles.statValue}>{exercise.sets}</Text>
+                  <Text style={styles.statValue}>{exercise.sets || '-'}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                   <Text style={styles.statLabel}>Reps</Text>
-                  <Text style={styles.statValue}>{exercise.reps}</Text>
+                  <Text style={styles.statValue}>{exercise.reps || '-'}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                   <Text style={styles.statLabel}>Minutes</Text>
-                  <Text style={styles.statValue}>{exercise.minutes}</Text>
+                  <Text style={styles.statValue}>{exercise.duration_minutes || '-'}</Text>
                 </View>
               </View>
             </View>
@@ -183,19 +166,17 @@ const PlayerTrainingPlanDetailScreen: React.FC = () => {
         </View>
 
         {/* Coach Notes Section */}
-        <View style={styles.coachNotesSection}>
-          <Text style={styles.sectionTitle}>Coach Notes</Text>
-          <View style={styles.notesCard}>
-            <Text style={styles.notesText}>
-              Focus on keeping your head down during the shot and follow through with your kicking foot.
-              Remember to plant your standing foot next to the ball for better accuracy.
-              Great improvement on your weak foot shots last session!
-            </Text>
+        {coach_notes && (
+          <View style={styles.coachNotesSection}>
+            <Text style={styles.sectionTitle}>Coach Notes</Text>
+            <View style={styles.notesCard}>
+              <Text style={styles.notesText}>{coach_notes}</Text>
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Completion Message */}
-        {progressPercentage === 100 && (
+        {progress.percentage === 100 && (
           <View style={styles.completionMessage}>
             <Ionicons name="trophy" size={24} color={COLORS.success} />
             <Text style={styles.completionText}>
@@ -212,6 +193,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.textSecondary,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.error,
+  },
+  backButtonError: {
+    marginTop: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+  },
+  backButtonErrorText: {
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Demi',
+    color: COLORS.textOnPrimary,
   },
   header: {
     paddingTop: 45,

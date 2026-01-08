@@ -1,37 +1,44 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { Ionicons } from '@expo/vector-icons';
 import { Input, Button } from '../common';
-import { RegisterFormData } from '../../utils/validators';
+import { convertDateToISO } from '../../utils/validators';
+import { useVerifyInvite, useRegisterPlayer } from '../../api/mutations/auth.mutations';
+import { VerifyInviteResponse } from '../../types';
 import { COLORS } from '../../constants';
 
 interface PlayerRegistrationFormProps {
-  onRegisterSuccess?: (data: RegisterFormData) => void;
+  onRegisterSuccess?: () => void;
 }
 
 type PlayerStep = 'invitation' | 'info';
+
+interface PlayerFormData {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  dateOfBirth: string;
+  height: string;
+  playerName: string;
+}
 
 export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
   onRegisterSuccess,
 }) => {
   const [currentStep, setCurrentStep] = useState<PlayerStep>('invitation');
   const [invitationCode, setInvitationCode] = useState('');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [playerName, setPlayerName] = useState('John Smith');
+  const [verifiedPlayerData, setVerifiedPlayerData] = useState<VerifyInviteResponse['player_data'] | null>(null);
 
-  // Dummy prefilled data (would come from invitation code validation)
-  const prefilledData = {
-    jerseyNumber: '10',
-    position: 'Forward',
-    club: 'FC Barcelona Youth',
-  };
+  const verifyInviteMutation = useVerifyInvite();
+  const registerPlayerMutation = useRegisterPlayer();
 
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
-  } = useForm<any>({
+  } = useForm<PlayerFormData>({
     mode: 'onChange',
     defaultValues: {
       email: '',
@@ -39,13 +46,31 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
       confirmPassword: '',
       dateOfBirth: '',
       height: '',
+      playerName: '',
     },
   });
 
-  const handleNextFromInvitation = () => {
-    if (invitationCode.trim()) {
-      // TODO: Validate invitation code with backend
-      setCurrentStep('info');
+  const handleNextFromInvitation = async () => {
+    if (!invitationCode.trim()) {
+      Alert.alert('Error', 'Please enter your invitation code');
+      return;
+    }
+
+    try {
+      const response = await verifyInviteMutation.mutateAsync({
+        invite_code: invitationCode.trim(),
+      });
+
+      if (response.valid && response.player_data) {
+        setVerifiedPlayerData(response.player_data);
+        setValue('playerName', response.player_data.player_name);
+        setCurrentStep('info');
+      }
+    } catch (error: any) {
+      const message =
+        error.response?.data?.detail ||
+        'Invalid invite code. Please check with your coach.';
+      Alert.alert('Invalid Code', message);
     }
   };
 
@@ -56,7 +81,6 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
   };
 
   const handleImagePick = () => {
-    // Placeholder for image picker functionality
     Alert.alert(
       'Photo Upload',
       'Image picker will be implemented here. You can add expo-image-picker library for full functionality.',
@@ -64,8 +88,43 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
     );
   };
 
-  const onSubmit = async (data: RegisterFormData) => {
-    onRegisterSuccess?.(data);
+  const onSubmit = async (data: PlayerFormData) => {
+    if (!verifiedPlayerData) {
+      Alert.alert('Error', 'Please verify your invitation code first');
+      return;
+    }
+
+    if (data.password !== data.confirmPassword) {
+      Alert.alert('Error', "Passwords don't match");
+      return;
+    }
+
+    const heightNum = parseInt(data.height, 10);
+    if (isNaN(heightNum) || heightNum < 100 || heightNum > 250) {
+      Alert.alert('Error', 'Please enter a valid height between 100 and 250 cm');
+      return;
+    }
+
+    try {
+      const birthDate = convertDateToISO(data.dateOfBirth);
+
+      await registerPlayerMutation.mutateAsync({
+        invite_code: invitationCode.trim(),
+        player_name: data.playerName,
+        email: data.email,
+        password: data.password,
+        birth_date: birthDate,
+        height: heightNum,
+      });
+
+      onRegisterSuccess?.();
+    } catch (error: any) {
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        'Registration failed. Please try again.';
+      Alert.alert('Registration Failed', message);
+    }
   };
 
   const renderStepIndicator = () => {
@@ -150,22 +209,17 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
           </>
         )}
 
-        {currentStep === 'info' && (
+        {currentStep === 'info' && verifiedPlayerData && (
           <>
             <View style={styles.uploadContainer}>
-              <Text style={styles.uploadLabel}>Player Photo</Text>
+              <Text style={styles.uploadLabel}>Player Photo (Optional)</Text>
               <TouchableOpacity
                 style={styles.uploadButton}
                 onPress={handleImagePick}
               >
                 <Ionicons name="cloud-upload-outline" size={24} color={COLORS.primary} />
-                <Text style={styles.uploadButtonText}>
-                  {selectedImage ? 'Change Photo' : 'Upload Photo'}
-                </Text>
+                <Text style={styles.uploadButtonText}>Upload Photo</Text>
               </TouchableOpacity>
-              {selectedImage && (
-                <Text style={styles.uploadedFileName}>Photo selected</Text>
-              )}
             </View>
 
             <View style={styles.sectionHeader}>
@@ -173,19 +227,23 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
               <Text style={styles.sectionSubtitle}>(Pre-filled from invitation)</Text>
             </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Player Name</Text>
-              <Input
-                value={playerName}
-                onChangeText={setPlayerName}
-                placeholder="Enter your name"
-              />
-            </View>
+            <Controller
+              control={control}
+              name="playerName"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  label="Player Name"
+                  value={value}
+                  onChangeText={onChange}
+                  placeholder="Enter your name"
+                />
+              )}
+            />
 
             <View style={styles.disabledInputContainer}>
               <Input
                 label="Jersey Number"
-                value={prefilledData.jerseyNumber}
+                value={String(verifiedPlayerData.jersey_number)}
                 editable={false}
                 style={styles.disabledInput}
               />
@@ -197,7 +255,7 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
             <View style={styles.disabledInputContainer}>
               <Input
                 label="Position"
-                value={prefilledData.position}
+                value={verifiedPlayerData.position}
                 editable={false}
                 style={styles.disabledInput}
               />
@@ -209,7 +267,7 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
             <View style={styles.disabledInputContainer}>
               <Input
                 label="Club"
-                value={prefilledData.club}
+                value={verifiedPlayerData.club_name}
                 editable={false}
                 style={styles.disabledInput}
               />
@@ -248,7 +306,7 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
                   label="Password"
-                  placeholder="Create a password"
+                  placeholder="Create a password (min 8 characters)"
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
@@ -313,9 +371,10 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
       <View style={styles.buttonContainer}>
         {currentStep === 'invitation' ? (
           <Button
-            title="Next"
+            title={verifyInviteMutation.isPending ? 'Verifying...' : 'Next'}
             onPress={handleNextFromInvitation}
             fullWidth
+            disabled={verifyInviteMutation.isPending}
           />
         ) : (
           <>
@@ -324,11 +383,13 @@ export const PlayerRegistrationForm: React.FC<PlayerRegistrationFormProps> = ({
               variant="outline"
               onPress={handlePrevious}
               style={styles.previousButton}
+              disabled={registerPlayerMutation.isPending}
             />
             <Button
-              title="Create Account"
+              title={registerPlayerMutation.isPending ? 'Creating...' : 'Create Account'}
               onPress={handleSubmit(onSubmit)}
               style={styles.nextButton}
+              disabled={registerPlayerMutation.isPending}
             />
           </>
         )}
@@ -473,22 +534,6 @@ const styles = StyleSheet.create({
     fontFamily: 'FranklinGothic-Book',
     color: COLORS.primary,
     marginLeft: 8,
-  },
-  uploadedFileName: {
-    fontSize: 12,
-    fontFamily: 'FranklinGothic-Book',
-    color: COLORS.textSecondary,
-    marginTop: 8,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontFamily: 'FranklinGothic-Demi',
-    color: COLORS.text,
-    marginBottom: 8,
-    letterSpacing: 0.3,
   },
   disabledInputContainer: {
     position: 'relative',

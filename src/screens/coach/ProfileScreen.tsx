@@ -1,30 +1,51 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants';
 import { useAuth } from '../../hooks';
+import { useCoachProfile } from '../../api/queries/coach.queries';
+import { convertDateFromISO } from '../../utils/validators';
 
 const ProfileScreen: React.FC = () => {
   const { logout } = useAuth();
-
-  // Mock data - replace with real data later
-  const profile = {
-    name: 'John Smith',
-    club: 'Thunder United FC',
-    email: 'john@example.com',
-    gender: 'Male',
-    birthdate: '8/1/2005',
-  };
-
-  const clubStats = {
-    totalPlayers: 3,
-    totalMatches: 22,
-    winRate: '64%',
-  };
+  const { data, isLoading, error, refetch } = useCoachProfile();
 
   const handleLogOut = () => {
     logout();
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading profile...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="alert-circle-outline" size={48} color={COLORS.error} />
+        <Text style={styles.errorText}>Failed to load profile</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const profile = data?.coach;
+  const club = data?.club;
+  const clubStats = data?.club_stats;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
@@ -32,14 +53,22 @@ const ProfileScreen: React.FC = () => {
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.logoContainer}>
-            <Image
-              source={require('../../../assets/identity/logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            {club?.logo_url ? (
+              <Image
+                source={{ uri: club.logo_url }}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            ) : (
+              <Image
+                source={require('../../../assets/identity/logo.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            )}
           </View>
-          <Text style={styles.name}>{profile.name}</Text>
-          <Text style={styles.club}>{profile.club}</Text>
+          <Text style={styles.name}>{profile?.full_name || 'Coach'}</Text>
+          <Text style={styles.club}>{club?.club_name || 'Club'}</Text>
         </View>
 
         {/* Profile Information */}
@@ -48,17 +77,19 @@ const ProfileScreen: React.FC = () => {
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{profile.email}</Text>
+              <Text style={styles.infoValue}>{profile?.email || '-'}</Text>
             </View>
             <View style={styles.infoDivider} />
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Gender</Text>
-              <Text style={styles.infoValue}>{profile.gender}</Text>
+              <Text style={styles.infoValue}>{profile?.gender || '-'}</Text>
             </View>
             <View style={styles.infoDivider} />
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Birthdate</Text>
-              <Text style={styles.infoValue}>{profile.birthdate}</Text>
+              <Text style={styles.infoValue}>
+                {profile?.birth_date ? convertDateFromISO(profile.birth_date) : '-'}
+              </Text>
             </View>
           </View>
         </View>
@@ -68,15 +99,15 @@ const ProfileScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>Club Stats</Text>
           <View style={styles.statsCard}>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{clubStats.totalPlayers}</Text>
+              <Text style={styles.statNumber}>{clubStats?.total_players ?? 0}</Text>
               <Text style={styles.statLabel}>Total Players</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{clubStats.totalMatches}</Text>
+              <Text style={styles.statNumber}>{clubStats?.total_matches ?? 0}</Text>
               <Text style={styles.statLabel}>Total Matches</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{clubStats.winRate}</Text>
+              <Text style={styles.statNumber}>{clubStats?.win_rate_percentage ?? 0}%</Text>
               <Text style={styles.statLabel}>Win Rate</Text>
             </View>
           </View>
@@ -105,6 +136,44 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
     width: '100%',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.textSecondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    padding: 20,
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 16,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+  },
+  retryText: {
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Demi',
+    color: COLORS.textOnPrimary,
   },
   profileHeader: {
     alignItems: 'center',

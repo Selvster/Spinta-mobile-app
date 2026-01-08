@@ -5,8 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Input, Button } from '../common';
 import { loginSchema, LoginFormData } from '../../utils/validators';
 import { useLogin } from '../../api/mutations/auth.mutations';
-import { useAuthStore } from '../../stores/authStore';
-import { UserRole } from '../../types';
 
 interface LoginFormProps {
   onLoginSuccess?: () => void;
@@ -14,7 +12,6 @@ interface LoginFormProps {
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const loginMutation = useLogin();
-  const { setUser } = useAuthStore();
 
   const {
     control,
@@ -29,32 +26,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    // Determine role based on email (temporary until backend is ready)
-    // Use player@test.com for Player, any other email for Coach
-    const isPlayerEmail = data.email.toLowerCase().includes('player');
-
-    setUser({
-      id: '1',
-      email: data.email,
-      firstName: 'Test',
-      lastName: isPlayerEmail ? 'Player' : 'Coach',
-      role: isPlayerEmail ? UserRole.PLAYER : UserRole.COACH,
-      teamIds: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    onLoginSuccess?.();
-
-    // Original code (commented out for now):
-    // try {
-    //   await loginMutation.mutateAsync(data);
-    //   onLoginSuccess?.();
-    // } catch (error: any) {
-    //   Alert.alert(
-    //     'Login Failed',
-    //     error.response?.data?.message || 'Invalid credentials'
-    //   );
-    // }
+    try {
+      await loginMutation.mutateAsync(data);
+      onLoginSuccess?.();
+    } catch (error: any) {
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        'Invalid email or password';
+      Alert.alert('Login Failed', message);
+    }
   };
 
   return (
@@ -95,9 +76,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       />
 
       <Button
-        title="Log in"
+        title={loginMutation.isPending ? 'Logging in...' : 'Log in'}
         onPress={handleSubmit(onSubmit)}
         fullWidth
+        disabled={loginMutation.isPending}
       />
     </View>
   );

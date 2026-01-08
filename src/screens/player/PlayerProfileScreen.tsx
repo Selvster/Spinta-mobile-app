@@ -1,31 +1,59 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants';
 import { useAuth } from '../../hooks';
+import { usePlayerProfile } from '../../api/queries/player.queries';
+import { convertDateFromISO } from '../../utils/validators';
 
 const PlayerProfileScreen: React.FC = () => {
   const { logout } = useAuth();
-
-  // Mock player data - will come from auth context or API
-  const profile = {
-    name: 'Marcus Silva',
-    jerseyNumber: 10,
-    club: 'Thunder United FC',
-    position: 'Forward',
-    email: 'marcus@example.com',
-    birthdate: '15/3/2002',
-    height: "5'11\"",
-  };
-
-  const personalStats = {
-    matchesPlayed: 12,
-    goals: 8,
-    assists: 5,
-  };
+  const { data, isLoading, error, refetch } = usePlayerProfile();
 
   const handleLogOut = () => {
     logout();
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading profile...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="alert-circle-outline" size={48} color={COLORS.error} />
+        <Text style={styles.errorText}>Failed to load profile</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const player = data?.player;
+  const club = data?.club;
+  const seasonSummary = data?.season_summary;
+
+  // Format height display
+  const formatHeight = (height: number | null): string => {
+    if (!height) return '-';
+    // Convert cm to feet/inches for display
+    const totalInches = height / 2.54;
+    const feet = Math.floor(totalInches / 12);
+    const inches = Math.round(totalInches % 12);
+    return `${feet}'${inches}"`;
   };
 
   return (
@@ -34,11 +62,13 @@ const PlayerProfileScreen: React.FC = () => {
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>{profile.jerseyNumber}</Text>
+            <Text style={styles.avatarText}>{player?.jersey_number || '?'}</Text>
           </View>
-          <Text style={styles.name}>{profile.name}</Text>
-          <Text style={styles.position}>#{profile.jerseyNumber} • {profile.position}</Text>
-          <Text style={styles.club}>{profile.club}</Text>
+          <Text style={styles.name}>{player?.player_name || 'Player'}</Text>
+          <Text style={styles.position}>
+            #{player?.jersey_number || '?'} {player?.position ? `• ${player.position}` : ''}
+          </Text>
+          <Text style={styles.club}>{club?.club_name || 'Club'}</Text>
         </View>
 
         {/* Profile Information */}
@@ -47,22 +77,24 @@ const PlayerProfileScreen: React.FC = () => {
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{profile.email}</Text>
+              <Text style={styles.infoValue}>{player?.email || '-'}</Text>
             </View>
             <View style={styles.infoDivider} />
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Birthdate</Text>
-              <Text style={styles.infoValue}>{profile.birthdate}</Text>
+              <Text style={styles.infoValue}>
+                {player?.birth_date ? convertDateFromISO(player.birth_date) : '-'}
+              </Text>
             </View>
             <View style={styles.infoDivider} />
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Height</Text>
-              <Text style={styles.infoValue}>{profile.height}</Text>
+              <Text style={styles.infoValue}>{formatHeight(player?.height ?? null)}</Text>
             </View>
             <View style={styles.infoDivider} />
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Position</Text>
-              <Text style={styles.infoValue}>{profile.position}</Text>
+              <Text style={styles.infoValue}>{player?.position || '-'}</Text>
             </View>
           </View>
         </View>
@@ -72,15 +104,15 @@ const PlayerProfileScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>Season Stats</Text>
           <View style={styles.statsCard}>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{personalStats.matchesPlayed}</Text>
+              <Text style={styles.statNumber}>{seasonSummary?.matches_played ?? 0}</Text>
               <Text style={styles.statLabel}>Matches</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{personalStats.goals}</Text>
+              <Text style={styles.statNumber}>{seasonSummary?.goals ?? 0}</Text>
               <Text style={styles.statLabel}>Goals</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{personalStats.assists}</Text>
+              <Text style={styles.statNumber}>{seasonSummary?.assists ?? 0}</Text>
               <Text style={styles.statLabel}>Assists</Text>
             </View>
           </View>
@@ -109,6 +141,44 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
     width: '100%',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.textSecondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    padding: 20,
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 16,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+  },
+  retryText: {
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Demi',
+    color: COLORS.textOnPrimary,
   },
   profileHeader: {
     alignItems: 'center',

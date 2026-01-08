@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Modal, FlatList } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Ionicons } from '@expo/vector-icons';
 import { Input, Button } from '../common';
-import { RegisterFormData } from '../../utils/validators';
+import {
+  coachRegistrationSchema,
+  CoachRegistrationFormData,
+  convertDateToISO,
+} from '../../utils/validators';
+import { useRegisterCoach } from '../../api/mutations/auth.mutations';
 import { COLORS } from '../../constants';
 
 interface CoachRegistrationFormProps {
-  onRegisterSuccess?: (data: RegisterFormData) => void;
+  onRegisterSuccess?: () => void;
 }
 
 type CoachStep = 'basic' | 'club';
@@ -28,35 +34,38 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
   onRegisterSuccess,
 }) => {
   const [currentStep, setCurrentStep] = useState<CoachStep>('basic');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showAgeGroupPicker, setShowAgeGroupPicker] = useState(false);
-  const [formData, setFormData] = useState<any>({
-    fullName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    dateOfBirth: '',
-    gender: '',
-    clubLogo: '',
-    clubName: '',
-    country: '',
-    ageGroup: '',
-    stadium: '',
-  });
+
+  const registerCoachMutation = useRegisterCoach();
 
   const {
     control,
     handleSubmit,
     trigger,
-    getValues,
     formState: { errors },
-  } = useForm<any>({
+  } = useForm<CoachRegistrationFormData>({
+    resolver: zodResolver(coachRegistrationSchema),
     mode: 'onChange',
-    defaultValues: formData,
+    defaultValues: {
+      full_name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      birth_date: '',
+      gender: '',
+      club: {
+        club_name: '',
+        country: '',
+        age_group: '',
+        stadium: '',
+        logo_url: '',
+      },
+    },
   });
 
   const handleNext = async () => {
-    if (currentStep === 'basic') {
+    const isValid = await trigger(['full_name', 'email', 'password', 'confirmPassword']);
+    if (isValid) {
       setCurrentStep('club');
     }
   };
@@ -68,8 +77,6 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
   };
 
   const handleImagePick = () => {
-    // Placeholder for image picker functionality
-    // To implement: install expo-image-picker and use it here
     Alert.alert(
       'Image Upload',
       'Image picker will be implemented here. You can add expo-image-picker library for full functionality.',
@@ -77,8 +84,33 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
     );
   };
 
-  const onSubmit = async (data: RegisterFormData) => {
-    onRegisterSuccess?.(data);
+  const onSubmit = async (data: CoachRegistrationFormData) => {
+    try {
+      // Convert date to ISO format if provided
+      const birthDate = data.birth_date ? convertDateToISO(data.birth_date) : undefined;
+
+      await registerCoachMutation.mutateAsync({
+        email: data.email,
+        password: data.password,
+        full_name: data.full_name,
+        birth_date: birthDate,
+        gender: data.gender || undefined,
+        club: {
+          club_name: data.club.club_name,
+          country: data.club.country || undefined,
+          age_group: data.club.age_group || undefined,
+          stadium: data.club.stadium || undefined,
+          logo_url: data.club.logo_url || undefined,
+        },
+      });
+      onRegisterSuccess?.();
+    } catch (error: any) {
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        'Registration failed. Please try again.';
+      Alert.alert('Registration Failed', message);
+    }
   };
 
   const renderStepIndicator = () => {
@@ -148,7 +180,7 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
           <>
             <Controller
               control={control}
-              name="fullName"
+              name="full_name"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
                   label="Full Name"
@@ -156,7 +188,7 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
-                  error={errors.fullName?.message}
+                  error={errors.full_name?.message}
                   autoCapitalize="words"
                 />
               )}
@@ -186,7 +218,7 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
                   label="Password"
-                  placeholder="Create a password"
+                  placeholder="Create a password (min 8 characters)"
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
@@ -216,15 +248,15 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
 
             <Controller
               control={control}
-              name="dateOfBirth"
+              name="birth_date"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Date of Birth"
+                  label="Date of Birth (Optional)"
                   placeholder="DD/MM/YYYY"
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
-                  error={errors.dateOfBirth?.message}
+                  error={errors.birth_date?.message}
                 />
               )}
             />
@@ -234,7 +266,7 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
               name="gender"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Gender"
+                  label="Gender (Optional)"
                   placeholder="Male / Female / Other"
                   value={value}
                   onChangeText={onChange}
@@ -249,24 +281,19 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
         {currentStep === 'club' && (
           <>
             <View style={styles.uploadContainer}>
-              <Text style={styles.uploadLabel}>Club Logo</Text>
+              <Text style={styles.uploadLabel}>Club Logo (Optional)</Text>
               <TouchableOpacity
                 style={styles.uploadButton}
                 onPress={handleImagePick}
               >
                 <Ionicons name="cloud-upload-outline" size={24} color={COLORS.primary} />
-                <Text style={styles.uploadButtonText}>
-                  {selectedImage ? 'Change Image' : 'Upload Image'}
-                </Text>
+                <Text style={styles.uploadButtonText}>Upload Image</Text>
               </TouchableOpacity>
-              {selectedImage && (
-                <Text style={styles.uploadedFileName}>Image selected</Text>
-              )}
             </View>
 
             <Controller
               control={control}
-              name="clubName"
+              name="club.club_name"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
                   label="Club Name"
@@ -274,7 +301,7 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
-                  error={errors.clubName?.message}
+                  error={errors.club?.club_name?.message}
                   autoCapitalize="words"
                 />
               )}
@@ -282,15 +309,15 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
 
             <Controller
               control={control}
-              name="country"
+              name="club.country"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Country"
+                  label="Country (Optional)"
                   placeholder="Enter country"
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
-                  error={errors.country?.message}
+                  error={errors.club?.country?.message}
                   autoCapitalize="words"
                 />
               )}
@@ -298,10 +325,10 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
 
             <Controller
               control={control}
-              name="ageGroup"
+              name="club.age_group"
               render={({ field: { onChange, value } }) => (
                 <View>
-                  <Text style={styles.uploadLabel}>Age Group / Level</Text>
+                  <Text style={styles.uploadLabel}>Age Group / Level (Optional)</Text>
                   <TouchableOpacity
                     style={styles.dropdownButton}
                     onPress={() => setShowAgeGroupPicker(true)}
@@ -357,15 +384,15 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
 
             <Controller
               control={control}
-              name="stadium"
+              name="club.stadium"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Stadium"
+                  label="Stadium (Optional)"
                   placeholder="Enter stadium name"
                   value={value}
                   onChangeText={onChange}
                   onBlur={onBlur}
-                  error={errors.stadium?.message}
+                  error={errors.club?.stadium?.message}
                   autoCapitalize="words"
                 />
               )}
@@ -388,11 +415,13 @@ export const CoachRegistrationForm: React.FC<CoachRegistrationFormProps> = ({
               variant="outline"
               onPress={handlePrevious}
               style={styles.previousButton}
+              disabled={registerCoachMutation.isPending}
             />
             <Button
-              title="Create Account"
+              title={registerCoachMutation.isPending ? 'Creating...' : 'Create Account'}
               onPress={handleSubmit(onSubmit)}
               style={styles.nextButton}
+              disabled={registerCoachMutation.isPending}
             />
           </>
         )}
@@ -500,28 +529,6 @@ const styles = StyleSheet.create({
     fontFamily: 'FranklinGothic-Book',
     color: COLORS.primary,
     marginLeft: 8,
-  },
-  uploadedFileName: {
-    fontSize: 12,
-    fontFamily: 'FranklinGothic-Book',
-    color: COLORS.textSecondary,
-    marginTop: 8,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF5F0',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    fontFamily: 'FranklinGothic-Book',
-    color: COLORS.text,
-    marginLeft: 8,
-    flex: 1,
-    lineHeight: 20,
   },
   buttonContainer: {
     flexDirection: 'row',

@@ -1,10 +1,11 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 import { API_BASE_URL } from '../constants/config';
+import { queryClient } from './queryClient';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -13,36 +14,24 @@ export const apiClient = axios.create({
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
   (config) => {
-    const tokens = useAuthStore.getState().tokens;
-    if (tokens?.accessToken) {
-      config.headers.Authorization = `Bearer ${tokens.accessToken}`;
+    const token = useAuthStore.getState().token;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for token refresh and error handling
+// Response interceptor for error handling
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const { tokens } = useAuthStore.getState();
-        if (tokens?.refreshToken) {
-          // TODO: Implement token refresh logic here
-          // const newTokens = await refreshTokens(tokens.refreshToken);
-          // useAuthStore.getState().setTokens(newTokens);
-          // return apiClient(originalRequest);
-        }
-      } catch (refreshError) {
-        useAuthStore.getState().logout();
-        return Promise.reject(refreshError);
-      }
+    // Handle 401 Unauthorized - redirect to login
+    if (error.response?.status === 401) {
+      // Clear all cached data and auth state
+      queryClient.clear();
+      useAuthStore.getState().logout();
     }
 
     return Promise.reject(error);

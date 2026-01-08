@@ -1,7 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants';
 import { AttributeRadar, Attribute } from '../../components/shared';
+import { usePlayerDashboard } from '../../api/queries/player.queries';
 
 interface StatRow {
   label: string;
@@ -9,39 +11,53 @@ interface StatRow {
 }
 
 const PlayerHomeScreen: React.FC = () => {
-  // Mock player data - will come from auth context or API
-  const playerData = {
-    name: 'Marcus Silva',
-    jerseyNumber: 10,
-    height: "5'11\"",
-    age: 23,
-    position: 'Forward',
-  };
+  const { data, isLoading, error } = usePlayerDashboard();
 
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Loading your stats...</Text>
+      </View>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Ionicons name="alert-circle-outline" size={48} color={COLORS.error} />
+        <Text style={styles.errorText}>Failed to load your stats</Text>
+      </View>
+    );
+  }
+
+  const { player, attributes, season_statistics } = data;
+
+  // Map API attributes to radar chart format
   const attributeScores: Attribute[] = [
-    { label: 'PAC', value: 85, maxValue: 100 },
-    { label: 'SHO', value: 78, maxValue: 100 },
-    { label: 'PAS', value: 72, maxValue: 100 },
-    { label: 'DRI', value: 80, maxValue: 100 },
-    { label: 'DEF', value: 45, maxValue: 100 },
-    { label: 'PHY', value: 68, maxValue: 100 },
+    { label: 'ATK', value: attributes.attacking_rating, maxValue: 100 },
+    { label: 'TEC', value: attributes.technique_rating, maxValue: 100 },
+    { label: 'CRE', value: attributes.creativity_rating, maxValue: 100 },
+    { label: 'TAC', value: attributes.tactical_rating, maxValue: 100 },
+    { label: 'DEF', value: attributes.defending_rating, maxValue: 100 },
   ];
 
+  // Build season stats from API response
   const seasonStats: StatRow[] = [
-    { label: 'Matches Played', value: 12 },
-    { label: 'Goals', value: 8 },
-    { label: 'Assists', value: 5 },
-    { label: 'Expected Goals (xG)', value: 6.5 },
-    { label: 'Shots per Game', value: 2.7 },
-    { label: 'Shots on Target per Game', value: 2.5 },
-    { label: 'Total Passes', value: 450 },
-    { label: 'Passes Completed', value: 385 },
-    { label: 'Total Dribbles', value: 42 },
-    { label: 'Successful Dribbles', value: 36 },
-    { label: 'Tackles', value: 32 },
-    { label: 'Tackle Success Rate', value: '78%' },
-    { label: 'Interceptions', value: 18 },
-    { label: 'Interceptions Success %', value: '75%' },
+    { label: 'Matches Played', value: season_statistics.general.matches_played },
+    { label: 'Goals', value: season_statistics.attacking.goals },
+    { label: 'Assists', value: season_statistics.attacking.assists },
+    { label: 'Expected Goals (xG)', value: season_statistics.attacking.expected_goals.toFixed(1) },
+    { label: 'Shots per Game', value: season_statistics.attacking.shots_per_game.toFixed(1) },
+    { label: 'Shots on Target per Game', value: season_statistics.attacking.shots_on_target_per_game.toFixed(1) },
+    { label: 'Total Passes', value: season_statistics.passing.total_passes },
+    { label: 'Passes Completed', value: season_statistics.passing.passes_completed },
+    { label: 'Total Dribbles', value: season_statistics.dribbling.total_dribbles },
+    { label: 'Successful Dribbles', value: season_statistics.dribbling.successful_dribbles },
+    { label: 'Tackles', value: season_statistics.defending.tackles },
+    { label: 'Tackle Success Rate', value: `${season_statistics.defending.tackle_success_rate}%` },
+    { label: 'Interceptions', value: season_statistics.defending.interceptions },
+    { label: 'Interceptions Success %', value: `${season_statistics.defending.interception_success_rate}%` },
   ];
 
   return (
@@ -50,11 +66,11 @@ const PlayerHomeScreen: React.FC = () => {
         {/* Player Info Section */}
         <View style={styles.playerInfoSection}>
           <View style={styles.largeAvatar}>
-            <Text style={styles.largeAvatarText}>{playerData.jerseyNumber}</Text>
+            <Text style={styles.largeAvatarText}>{player.jersey_number}</Text>
           </View>
-          <Text style={styles.playerName}>{playerData.name}</Text>
+          <Text style={styles.playerName}>{player.player_name}</Text>
           <Text style={styles.playerDetails}>
-            #{playerData.jerseyNumber} • {playerData.height} • {playerData.age} years
+            #{player.jersey_number}{player.height ? ` • ${player.height}cm` : ''}{player.age ? ` • ${player.age}` : ''}
           </Text>
         </View>
 
@@ -98,6 +114,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
     paddingTop: 45,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.textSecondary,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontFamily: 'FranklinGothic-Book',
+    color: COLORS.error,
   },
   scrollContent: {
     flex: 1,

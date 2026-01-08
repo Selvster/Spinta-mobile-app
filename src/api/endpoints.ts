@@ -1,24 +1,37 @@
 export const ENDPOINTS = {
-  // Auth endpoints
+  // Auth endpoints (4 endpoints)
   AUTH: {
     LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    LOGOUT: '/auth/logout',
-    REFRESH: '/auth/refresh',
-    ME: '/auth/me',
+    REGISTER_COACH: '/auth/register/coach',
+    VERIFY_INVITE: '/auth/verify-invite',
+    REGISTER_PLAYER: '/auth/register/player',
   },
 
-  // Player endpoints
-  PLAYER: {
-    PROFILE: (id: string) => `/players/${id}`,
-    TRAINING: (id: string) => `/players/${id}/training`,
-    STATS: (id: string) => `/players/${id}/stats`,
-  },
-
-  // Coach endpoints
+  // Coach endpoints (11 endpoints)
   COACH: {
-    PROFILE: (id: string) => `/coaches/${id}`,
-    TEAMS: (id: string) => `/coaches/${id}/teams`,
-    PLAYERS: (id: string) => `/coaches/${id}/players`,
+    DASHBOARD: '/coach/dashboard',
+    MATCH_DETAIL: (matchId: string) => `/coach/matches/${matchId}`,
+    PLAYERS: '/coach/players',
+    PLAYER_DETAIL: (playerId: string) => `/coach/players/${playerId}`,
+    PLAYER_MATCH_DETAIL: (playerId: string, matchId: string) =>
+      `/coach/players/${playerId}/matches/${matchId}`,
+    PROFILE: '/coach/profile',
+    TRAINING_PLAN_GENERATE_AI: '/coach/training-plans/generate-ai',
+    TRAINING_PLAN_CREATE: '/coach/training-plans',
+    TRAINING_PLAN_DETAIL: (planId: string) => `/coach/training-plans/${planId}`,
+    TRAINING_PLAN_UPDATE: (planId: string) => `/coach/training-plans/${planId}`,
+    TRAINING_PLAN_DELETE: (planId: string) => `/coach/training-plans/${planId}`,
+  },
+
+  // Player endpoints (7 endpoints)
+  PLAYER: {
+    DASHBOARD: '/player/dashboard',
+    MATCHES: '/player/matches',
+    MATCH_DETAIL: (matchId: string) => `/player/matches/${matchId}`,
+    TRAINING: '/player/training',
+    TRAINING_DETAIL: (planId: string) => `/player/training/${planId}`,
+    TOGGLE_EXERCISE: (exerciseId: string) =>
+      `/player/training/exercises/${exerciseId}/toggle`,
+    PROFILE: '/player/profile',
   },
 } as const;
